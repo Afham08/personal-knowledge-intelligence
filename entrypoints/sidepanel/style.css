@@ -57,3 +57,18 @@ summary {
   overflow: auto;
   white-space: pre-wrap;
 }
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-command {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[aria-label="AI article analysis"] li + li {
+  margin-top: 8px;
+}

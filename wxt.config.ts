@@ -7,5 +7,6 @@ export default defineConfig({
     minimum_chrome_version: '116',
     action: { default_title: 'Open Personal Knowledge Intelligence' },
     permissions: ['activeTab', 'sidePanel', 'scripting', 'storage'],
+    optional_host_permissions: ['http://127.0.0.1:11434/*'],
   },
 });

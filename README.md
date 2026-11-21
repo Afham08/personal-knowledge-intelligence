@@ -1,34 +1,48 @@
 # Personal Knowledge Intelligence
 
-PKI is a Chrome and Brave extension for organizing online reading around personal learning goals. The current version extracts article text on request and saves it, along with notes, to local Knowledge Spaces.
+PKI is a Chrome and Brave extension for organizing online reading around personal learning goals. It extracts article text on request, saves articles and notes to local Knowledge Spaces, and offers optional local AI for relevance, summaries, key concepts, and active recall.
 
-## Build locally
+## Build and install locally
 
 In Windows PowerShell, run these commands from the project folder with Node.js 24.
 
 ```powershell
 npm.cmd ci
 npm.cmd run typecheck
-node --test tests/library-model.test.mjs
+npm.cmd test
 npm.cmd run build
 ```
 
-## Reload and test in Brave
+Open `brave://extensions` and enable **Developer mode**. Click **Load unpacked** and choose the project's `.output\chrome-mv3` directory. Click **Reload** on PKI's card after rebuilding. In Chrome, use `chrome://extensions`.
 
-1. Open `brave://extensions` and turn on **Developer mode**. If PKI is already installed from this workspace, click its **Reload** button. Otherwise, click **Load unpacked** and select `C:\personal-knowledge-intelligence\.output\chrome-mv3`.
-2. Open a public article, such as `https://en.wikipedia.org/wiki/Knowledge`. Open Brave's Extensions menu, pin **Personal Knowledge Intelligence**, and click its toolbar icon. Check that the side panel shows the article's title and URL.
-3. Create two Knowledge Spaces with different names and goals. Select the first space, click **Extract article**, and open **Read extracted text**. Check that ordinary article text appears.
-4. Save the article with a note. Save it again in the same space and verify that the library shows one entry and keeps the original note. Save the same article in the other space with a different note and verify that each space shows its own note.
-5. Close and reopen the panel. Switch spaces and verify the goals, article text, and notes are still available. Edit a goal or note, then reopen the panel again to check that the edit persists.
-6. Switch to an article in a new tab and check that PKI asks you to grant access there. Click its toolbar icon to grant temporary access and extract again. Try `brave://settings` and confirm there is no extraction option.
+Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Extract article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
 
-In Chrome, use `chrome://extensions` and `chrome://settings` for the same checks.
+## Optional Ollama setup in Brave
 
-## Permissions and local data
+1. Install [Ollama for Windows](https://ollama.com/download/windows). In `brave://extensions`, find PKI's extension ID. The side panel also prints your exact origin under **AI settings → Set up Ollama in Brave**.
+2. Quit Ollama from the Windows notification area if it is already running. Start it in PowerShell using the following configuration, replacing `YOUR_EXTENSION_ID` with the ID shown in Brave. Leave this terminal open.
 
-- `sidePanel` opens the browser side panel.
-- `activeTab` grants access to a tab after a toolbar click.
-- `scripting` runs the packaged extractor only when **Extract article** is clicked.
-- `storage` keeps spaces, article text, and notes in your local browser profile.
+   ```powershell
+   $env:OLLAMA_HOST = "127.0.0.1:11434"
+   $env:OLLAMA_NO_CLOUD = "1"
+   $env:OLLAMA_ORIGINS = "chrome-extension://YOUR_EXTENSION_ID"
+   ollama serve
+   ```
 
-Article text is stored as plain text and capped at 100,000 characters. One stored article can be linked to multiple spaces, each with its own note. Article URLs retain query parameters and common hash routes so separate pages retain separate IDs. This version keeps saved data in the browser profile and makes no AI or backend requests.
+3. In a second PowerShell window, run `ollama pull qwen2.5:1.5b`. This [lightweight model](https://ollama.com/library/qwen2.5:1.5b) is a 986 MB download. Inference uses additional RAM and can take a few minutes on a CPU. Small models are more likely to produce invalid citations or incomplete answers. Pick another installed local chat model if your machine can run it.
+4. In the side panel, open **AI settings**, choose **Enable local AI**, and grant the loopback permission. Select your installed model. Use **Test connection** after starting Ollama or installing a model. If connection fails, check the endpoint, compare the extension ID, and restart Ollama after changing the variables. Keep Ollama bound to loopback since the local API does not require authentication.
+
+## Test the analysis workflow
+
+1. Open a public article, click PKI's toolbar icon, and choose a Knowledge Space with a learning goal.
+2. Click **Extract article**, then **Analyze with AI**. Check that the panel displays a qualitative relevance level, goal alignment, a summary, key concepts, and three to five recall questions. Type an answer before choosing **Reveal expected answer** and compare the cited passage.
+3. Analyze again with the same article, model, and goal. Check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.
+4. On a fresh analysis, try **Cancel analysis**. Stop Ollama and use **Test connection** to check the connection error. The article library, notes, and saving remain available. On `brave://settings`, extraction should be unavailable.
+
+## Privacy and known limits
+
+- AI starts disabled. PKI requests optional access to the loopback Ollama port only when the user enables or tests AI. Its provider uses the fixed local port 11434 and rejects redirects. The Ollama setup above disables cloud inference and allows PKI's exact extension origin.
+- An explicit analysis sends the article title, the selected goal, and up to five plain-text passages of up to 650 characters each to Ollama. Notes, page URLs, browsing history, and raw HTML are excluded. A notice appears when the analysis covers only excerpts.
+- Results are verified against a strict schema. Citations are checked against the supplied passages. The model can still misinterpret what a quote means. Recall answers are for self-comparison and are not graded or saved.
+- Analysis results are stored in the browser profile. PKI keeps up to 30 validated results and checks the current model digest before reuse. An Ollama connection is therefore needed even for a cache hit. The library is independent of this cache.
+- Automated tests use mock Ollama responses to cover model discovery, validation, errors, cancellation, and cache behavior. `npm.cmd test` also checks article IDs and duplicate prevention. A real model must be checked separately in Brave.

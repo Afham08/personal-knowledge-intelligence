@@ -1,9 +1,11 @@
 import { useState } from 'react';
 
 import { isWebUrl, type ActiveTab } from '../../lib/active-tab';
+import type { AiSettings } from '../../lib/ai/local-store';
 import type { ExtractedArticle } from '../../lib/article';
 import { extractFromTab } from '../../lib/extract-from-tab';
 import type { KnowledgeSpace } from '../../lib/library-model';
+import { ArticleAnalysis } from './ArticleAnalysis';
 import { SaveArticle } from './SavedLibrary';
 import { useActiveTab } from './useActiveTab';
 
@@ -12,9 +14,9 @@ type ExtractionState =
   | { status: 'error'; message: string }
   | { status: 'ready'; article: ExtractedArticle };
 
-type CurrentArticleProps = { space?: KnowledgeSpace; libraryReady: boolean };
+type CurrentArticleProps = { space?: KnowledgeSpace; libraryReady: boolean; ai?: AiSettings };
 
-export function CurrentArticle({ space, libraryReady }: CurrentArticleProps) {
+export function CurrentArticle({ space, libraryReady, ai }: CurrentArticleProps) {
   const state = useActiveTab();
   const tab = state.status === 'ready' ? state.tab : null;
 
@@ -27,7 +29,7 @@ export function CurrentArticle({ space, libraryReady }: CurrentArticleProps) {
       {tab && !tab.url && <p>Open a web article and click the PKI toolbar icon to grant access to that tab.</p>}
       {tab?.url && !isWebUrl(tab.url) && <p>This page is restricted. Open an HTTP or HTTPS article.</p>}
       {tab?.url && isWebUrl(tab.url) && (
-        <ArticleExtraction key={JSON.stringify([tab.id, tab.url])} tab={tab} space={space} libraryReady={libraryReady} />
+        <ArticleExtraction key={JSON.stringify([tab.id, tab.url])} tab={tab} space={space} libraryReady={libraryReady} ai={ai} />
       )}
     </section>
   );
@@ -37,7 +39,7 @@ type ArticleExtractionProps = CurrentArticleProps & {
   tab: ActiveTab;
 };
 
-function ArticleExtraction({ tab, space, libraryReady }: ArticleExtractionProps) {
+function ArticleExtraction({ tab, space, libraryReady, ai }: ArticleExtractionProps) {
   const [state, setState] = useState<ExtractionState>({ status: 'idle' });
 
   async function extract() {
@@ -68,6 +70,10 @@ function ArticleExtraction({ tab, space, libraryReady }: ArticleExtractionProps)
           </details>
           {space && <SaveArticle key={space.id} article={state.article} space={space} />}
           {libraryReady && !space && <p>Create a Knowledge Space to save this article.</p>}
+          {ai?.enabled && space && (
+            <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName])}
+              article={state.article} goal={space.learningGoal} modelName={ai.modelName} />
+          )}
         </section>
       )}
     </>

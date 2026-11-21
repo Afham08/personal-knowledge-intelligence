@@ -4,8 +4,9 @@ import { browser } from 'wxt/browser';
 import { analyzeArticle } from '../../lib/ai/analysis';
 import { localAnalysisCache } from '../../lib/ai/local-store';
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
-import { AiError, type Passage } from '../../lib/ai/provider';
-import type { Analysis } from '../../lib/ai/schema';
+import { AiError } from '../../lib/ai/provider';
+import { RecallPractice } from './RecallPractice';
+import { SourceReference } from './SourceReference';
 import type { ExtractedArticle } from '../../lib/article';
 
 type AnalysisState =
@@ -74,7 +75,7 @@ export function ArticleAnalysis({ article, goal, modelName }: {
       )}
       {state.status === 'cancelled' && <p role="status">Analysis cancelled.</p>}
       {state.status === 'error' && <p role="alert">{state.message}</p>}
-      {state.status === 'ready' && <AnalysisResult {...state.result} />}
+      {state.status === 'ready' && <AnalysisResult {...state.result} modelName={modelName} />}
     </section>
   );
 }
@@ -83,28 +84,23 @@ function TextList({ items }: { items: string[] }) {
   return items.length > 0 && <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;
 }
 
-function SourceReference({ passage }: { passage: Passage | undefined }) {
-  if (!passage) return null;
-  return (
-    <details>
-      <summary>Source reference {passage.id}</summary>
-      <p className="article-text">{passage.text}</p>
-    </details>
-  );
-}
+type AnalysisResult = Awaited<ReturnType<typeof analyzeArticle>>;
 
-function AnalysisResult({ analysis, passages, cached, partial }: {
-  analysis: Analysis;
-  passages: Passage[];
-  cached: boolean;
-  partial: boolean;
-}) {
+function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName }: AnalysisResult & { modelName: string }) {
   const { relevance, summary, concepts, recall } = analysis;
   const sourceById = new Map(passages.map((passage) => [passage.id, passage]));
   return (
     <>
       {cached && <p role="status">Using a cached analysis.</p>}
-      {partial && <p>Analysis is based on excerpts from this article.</p>}
+      <p>
+        Extracted {coverage.extractedCharacters.toLocaleString()} characters{coverage.extractionTruncated ? ' (extraction limit reached)' : ''}.
+        {' '}Ollama received {passages.length} of {coverage.availablePassages} passages ({coverage.suppliedCharacters.toLocaleString()} characters).
+        {' '}{partial ? 'This analysis covers only the supplied text.' : 'The supplied passages cover the extracted text.'}
+      </p>
+      <details>
+        <summary>View passages sent to Ollama</summary>
+        {passages.map((passage) => <SourceReference key={passage.id} passage={passage} />)}
+      </details>
       <p>Source references show the article text supplied to Ollama. Compare AI claims and answers with the referenced passage.</p>
       <h4>Relevance · {relevance.level}</h4>
       <p><strong>Goal alignment</strong> {relevance.alignment}</p>
@@ -124,23 +120,7 @@ function AnalysisResult({ analysis, passages, cached, partial }: {
         <li key={index}><strong>{term}</strong> {explanation}<SourceReference passage={sourceById.get(evidence)} /></li>
       ))}</ul>
 
-      <h4>Active recall</h4>
-      <p>Answer from memory, then compare your response with the expected answer.</p>
-      <ol>{recall.map((item, index) => <li key={index}><RecallQuestion item={item} passage={sourceById.get(item.evidence)} /></li>)}</ol>
-    </>
-  );
-}
-
-function RecallQuestion({ item, passage }: { item: Analysis['recall'][number]; passage: Passage | undefined }) {
-  const [revealed, setRevealed] = useState(false);
-
-  return (
-    <>
-      <label>{item.question}<textarea placeholder="Your answer" /></label>
-      <button type="button" aria-expanded={revealed} onClick={() => setRevealed(!revealed)}>
-        {revealed ? 'Hide expected answer' : 'Reveal expected answer'}
-      </button>
-      {revealed && <><p><strong>Expected answer</strong> {item.answer}</p><SourceReference passage={passage} /></>}
+      <RecallPractice questions={recall} modelName={modelName} sourceById={sourceById} />
     </>
   );
 }

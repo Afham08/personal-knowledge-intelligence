@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "wxt",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/ai.test.mjs tests/library-model.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "build": "wxt build",
     "postinstall": "wxt prepare"
   },

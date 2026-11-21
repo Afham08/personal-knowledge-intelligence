@@ -119,11 +119,15 @@ test('times out and cancels in-flight transport', async () => {
 });
 
 test('caps the passages, indicates partial coverage, and requires a learning goal', () => {
-  const prepared = prepareInput({ ...article, text: 'An original article. '.repeat(700) + 'Last sentence.' }, goal);
+  const prepared = prepareInput({ ...article, text: Array.from({ length: 250 }, (_, index) => 'Section ' + index + ' describes a different idea and how it was used. ').join('') }, goal);
   assert.equal(prepared.partial, true);
   assert.equal(prepared.input.passages.length, 8);
   assert.ok(prepared.input.passages.every(({ text }) => text.length <= 400));
-  assert.match(prepared.input.passages.at(-1).text, /Last sentence\.$/);
+  assert.match(prepared.input.passages[0].text, /Section 0/);
+  assert.match(prepared.input.passages.at(-1).text, /Section 2\d\d/);
+  assert.equal(prepared.coverage.availablePassages > prepared.input.passages.length, true);
+  assert.equal(prepared.coverage.suppliedCharacters,
+    prepared.input.passages.reduce((length, passage) => length + passage.text.length, 0));
   assert.equal(prepareInput({ ...article, truncated: true }, goal).partial, true);
   assert.throws(() => prepareInput(article, '  '), { code: 'invalid' });
 });
@@ -281,4 +285,18 @@ test('never retries a timeout or starts a retry after cancellation', async () =>
   }), { code: 'cancelled' });
   assert.equal(calls, 2);
   assert.equal(args.entries.size, 0);
+});
+
+test('prefers goal-related prose within long article sections without using the entire input budget for the lead', () => {
+  const sentences = Array.from({ length: 22 }, (_, index) => {
+    const ending = index === 15 ? 'Retrieval practice and retention provide useful evidence'
+      : index === 16 ? 'Bibliography citation ISBN 1, retrieval practice and retention https://example.org'
+      : 'The section describes its own separate background';
+    return 'Section ' + index + ' ' + ('additional context about unique material and observations '.repeat(5)) + ending + '.';
+  });
+  const analysis = prepareInput({ ...article, title: 'Reference article', text: sentences.join(' ') }, 'Explore retrieval practice and retention');
+  assert.equal(analysis.input.passages.length, 8);
+  assert.ok(analysis.input.passages.some(({ text }) => text.includes('useful evidence')));
+  assert.ok(analysis.input.passages.every(({ text }) => !text.includes('https://example.org')));
+  assert.ok(analysis.input.passages.some(({ text }) => /Section (18|19|20|21)/.test(text)));
 });

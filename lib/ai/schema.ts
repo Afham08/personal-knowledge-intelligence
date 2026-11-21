@@ -15,19 +15,19 @@ export type Analysis = {
   recall: { question: string; answer: string; evidence: string }[];
 };
 
-type Schema =
+export type Schema =
   | { type: 'string'; minLength: number; maxLength: number }
   | { type: 'string'; enum: readonly string[] }
   | { type: 'array'; items: Schema; minItems: number; maxItems: number }
   | { type: 'object'; properties: Record<string, Schema>; required: string[]; additionalProperties: false };
 
-function text(maxLength: number): Schema {
+export function text(maxLength: number): Schema {
   return { type: 'string', minLength: 1, maxLength };
 }
 function list(items: Schema, minItems: number, maxItems: number): Schema {
   return { type: 'array', items, minItems, maxItems };
 }
-function object(properties: Record<string, Schema>): Schema {
+export function object(properties: Record<string, Schema>): Schema {
   return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
 }
 
@@ -53,7 +53,7 @@ export function createAnalysisSchema(passageIds?: readonly string[]) {
 
 const responseShape = createAnalysisSchema();
 
-function matchesSchema(value: unknown, schema: Schema): boolean {
+export function matchesSchema(value: unknown, schema: Schema): boolean {
   switch (schema.type) {
     case 'string':
       if (typeof value !== 'string') return false;

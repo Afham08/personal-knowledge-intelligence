@@ -35,14 +35,14 @@ Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. Open
 ## Test the analysis workflow
 
 1. Open a public article, click PKI's toolbar icon, and choose a Knowledge Space with a learning goal.
-2. Click **Extract article**, then **Analyze with AI**. Check that the panel displays a qualitative relevance level, goal alignment, a summary, key concepts, and three to five recall questions. Type an answer before choosing **Reveal expected answer** and compare the cited passage.
+2. Click **Extract article**, then **Analyze with AI**. Check that the panel displays a qualitative relevance level, goal alignment, a summary, key concepts, and three to five recall questions. Type an answer before choosing **Reveal expected answer** and expand its **Source reference** and compare the answer with the supplied passage.
 3. Analyze again with the same article, model, and goal. Check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.
 4. On a fresh analysis, try **Cancel analysis**. Stop Ollama and use **Test connection** to check the connection error. The article library, notes, and saving remain available. On `brave://settings`, extraction should be unavailable.
 
 ## Privacy and known limits
 
 - AI starts disabled. PKI requests optional access to the loopback Ollama port only when the user enables or tests AI. Its provider uses the fixed local port 11434 and rejects redirects. The Ollama setup above disables cloud inference and allows PKI's exact extension origin.
-- An explicit analysis sends the article title, the selected goal, and up to five plain-text passages of up to 650 characters each to Ollama. Notes, page URLs, browsing history, and raw HTML are excluded. A notice appears when the analysis covers only excerpts.
-- Results are verified against a strict schema. Citations are checked against the supplied passages. The model can still misinterpret what a quote means. Recall answers are for self-comparison and are not graded or saved.
-- Analysis results are stored in the browser profile. PKI keeps up to 30 validated results and checks the current model digest before reuse. An Ollama connection is therefore needed even for a cache hit. The library is independent of this cache.
+- An explicit analysis sends the article title, the selected goal, and up to eight plain-text passages of up to 400 characters each to Ollama. Notes, page URLs, browsing history, and raw HTML are excluded. A notice appears when the analysis covers only excerpts.
+- PKI validates every passage ID against the passages supplied for that request and displays their text directly. A source reference identifies an excerpt for you to check. It does not establish that the excerpt supports the model's claim. PKI retries invalid model output once, with cancellation available during both attempts. Recall answers are for self-comparison and are not graded or saved.
+- Analysis results are stored in the browser profile. PKI keeps up to 30 validated results and checks the current model digest before reuse. Results from older citation formats are skipped. An Ollama connection is therefore needed even for a cache hit. The library is independent of this cache.
 - Automated tests use mock Ollama responses to cover model discovery, validation, errors, cancellation, and cache behavior. `npm.cmd test` also checks article IDs and duplicate prevention. A real model must be checked separately in Brave.

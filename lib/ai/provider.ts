@@ -2,13 +2,15 @@ export type Passage = { id: string; text: string };
 export type AnalysisInput = { title: string; goal: string; passages: Passage[] };
 export type AiModel = { name: string; revision: string };
 
+export type AnalysisRetry = 'evidence' | 'format';
+
 export interface AiProvider {
   id: string;
   listModels(signal?: AbortSignal): Promise<AiModel[]>;
-  generate(model: AiModel, input: AnalysisInput, signal: AbortSignal): Promise<unknown>;
+  generate(model: AiModel, input: AnalysisInput, signal: AbortSignal, retry?: AnalysisRetry): Promise<unknown>;
 }
 
-type AiErrorCode = 'connection' | 'timeout' | 'cancelled' | 'model' | 'invalid' | 'busy' | 'permission';
+type AiErrorCode = 'connection' | 'timeout' | 'cancelled' | 'model' | 'invalid' | 'evidence' | 'busy' | 'permission';
 
 export class AiError extends Error {
   readonly code: AiErrorCode;

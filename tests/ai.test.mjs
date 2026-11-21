@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { analyzeArticle, prepareInput } from '../lib/ai/analysis.ts';
+import { AiError } from '../lib/ai/provider.ts';
 import { createOllamaProvider } from '../lib/ai/ollama.ts';
 import { validateAnalysis } from '../lib/ai/schema.ts';
 
@@ -13,7 +14,7 @@ const article = {
 };
 const goal = 'Understand active recall';
 const model = { name: 'qwen2.5:1.5b', revision: 'digest-fixture' };
-const evidence = { passageId: 'P1', quote: 'Retrieving ideas from memory reveals gaps.' };
+const evidence = 'P1';
 const result = {
   relevance: { level: 'High', alignment: 'The text explains how recall exposes gaps.',
     topics: ['Recall'], limitations: ['No timing is given.'], evidence: [evidence] },
@@ -24,7 +25,7 @@ const result = {
     { question: 'What can recall reveal?', answer: 'Gaps in understanding.', evidence },
     { question: 'Where do you retrieve ideas from?', answer: 'Memory.', evidence },
     { question: 'What does repeating the process follow?', answer: 'Reviewing the material.',
-      evidence: { passageId: 'P1', quote: 'Repeat the process after reviewing the material.' } },
+      evidence },
   ],
 };
 const input = prepareInput(article, goal).input;
@@ -71,6 +72,8 @@ test('makes a structured single generation call without the article URL or crede
       const body = JSON.parse(options.body);
       assert.equal(body.stream, false);
       assert.equal(body.format.additionalProperties, false);
+      assert.deepEqual(body.format.properties.recall.items.properties.evidence.enum, ['P1']);
+      assert.deepEqual(body.format.properties.relevance.properties.evidence.items.enum, ['P1']);
       assert.equal(body.tools, undefined);
       assert.deepEqual(JSON.parse(body.messages[1].content), input);
       return response(ollamaReply(result));
@@ -118,23 +121,22 @@ test('times out and cancels in-flight transport', async () => {
 test('caps the passages, indicates partial coverage, and requires a learning goal', () => {
   const prepared = prepareInput({ ...article, text: 'An original article. '.repeat(700) + 'Last sentence.' }, goal);
   assert.equal(prepared.partial, true);
-  assert.equal(prepared.input.passages.length, 5);
-  assert.ok(prepared.input.passages.every(({ text }) => text.length <= 650));
+  assert.equal(prepared.input.passages.length, 8);
+  assert.ok(prepared.input.passages.every(({ text }) => text.length <= 400));
   assert.match(prepared.input.passages.at(-1).text, /Last sentence\.$/);
   assert.equal(prepareInput({ ...article, truncated: true }, goal).partial, true);
   assert.throws(() => prepareInput(article, '  '), { code: 'invalid' });
 });
 
 test('strictly validates shape, answer count, relevance category, and evidence', () => {
-  assert.equal(validateAnalysis(result, input.passages), result);
+  assert.deepEqual(validateAnalysis(result, input.passages), result);
   for (const invalid of [
     { ...result, unrequested: true },
     { ...result, recall: result.recall.slice(0, 2) },
     { ...result, relevance: { ...result.relevance, level: 99 } },
-    { ...result, relevance: { ...result.relevance, evidence: [] } },
     { ...result, recall: [result.recall[0], result.recall[0], result.recall[2]] },
-    { ...result, concepts: [{ ...result.concepts[0], evidence: { ...evidence, passageId: 'P9' } }] },
     { ...result, concepts: [{ ...result.concepts[0], evidence: { passageId: 'P1', quote: 'A fabricated quote.' } }] },
+    { ...result, recall: result.recall.map((item) => ({ ...item, quote: 'A fabricated quote.' })) },
   ]) {
     assert.throws(() => validateAnalysis(invalid, input.passages), { code: 'invalid' });
   }
@@ -193,5 +195,90 @@ test('bypasses corrupt cached entries and never caches invalid or cancelled resp
     return result;
   };
   await assert.rejects(analyzeArticle({ ...args, signal: controller.signal }), { code: 'cancelled' });
+  assert.equal(args.entries.size, 0);
+});
+
+
+test('normalizes harmless formatting in IDs and rejects absent or fabricated references', () => {
+  const formatted = {
+    ...result,
+    relevance: { ...result.relevance, evidence: ['  p1\n'] },
+    concepts: result.concepts.map((concept) => ({ ...concept, evidence: 'p1' })),
+    recall: result.recall.map((item) => ({ ...item, evidence: '\tP1 ' })),
+  };
+  assert.deepEqual(validateAnalysis(formatted, input.passages), result);
+  for (const id of ['P2', 'P9', 'P01', 'P 1', 'P1/P2', 'A made-up']) {
+    const invalid = { ...result, recall: result.recall.map((item) => ({ ...item, evidence: id })) };
+    assert.throws(() => validateAnalysis(invalid, input.passages), { code: 'evidence' });
+  }
+  assert.throws(() => validateAnalysis({
+    ...result, relevance: { ...result.relevance, evidence: [] },
+  }, input.passages), { code: 'evidence' });
+});
+
+test('keeps normalized passages contiguous, including overlong sentences with Unicode', () => {
+  const text = 'The author’s claim.\n\n' + '🙂'.repeat(205) + ' Final words.';
+  const { input: prepared, partial } = prepareInput({ ...article, text }, goal);
+  const normalized = text.replace(/\s+/gu, ' ');
+  assert.equal(partial, false);
+  assert.ok(prepared.passages.length > 1);
+  for (const { text: passage } of prepared.passages) {
+    assert.ok(passage.length <= 400);
+    assert.ok(passage.isWellFormed());
+    assert.ok(normalized.includes(passage));
+  }
+  assert.match(prepared.passages[0].text, /author’s/);
+});
+
+test('repairs invalid evidence once and caches only the validated reply', async () => {
+  const args = harness();
+  const attempts = [];
+  args.provider.generate = async (_model, _input, _signal, retry) => {
+    attempts.push(retry);
+    if (retry) return result;
+    return { ...result, recall: result.recall.map((item) => ({ ...item, evidence: 'P9' })) };
+  };
+  let retries = 0;
+  const output = await analyzeArticle({ ...args, onRetry: () => { retries++; } });
+  assert.deepEqual(attempts, [undefined, 'evidence']);
+  assert.equal(retries, 1);
+  assert.equal(output.cached, false);
+  assert.deepEqual(output.analysis, result);
+  assert.deepEqual(output.passages, input.passages);
+  assert.equal(args.entries.size, 1);
+  assert.equal((await analyzeArticle(args)).cached, true);
+  assert.equal(attempts.length, 2);
+});
+
+test('stops after the retry and explains persistent reference errors without caching them', async () => {
+  const args = harness();
+  const attempts = [];
+  args.provider.generate = async (_model, _input, _signal, retry) => {
+    attempts.push(retry);
+    return { ...result, relevance: { ...result.relevance, evidence: ['P8'] } };
+  };
+  await assert.rejects(analyzeArticle(args), { code: 'evidence', message: /source references after two attempts/ });
+  assert.deepEqual(attempts, [undefined, 'evidence']);
+  assert.equal(args.entries.size, 0);
+});
+
+test('never retries a timeout or starts a retry after cancellation', async () => {
+  const args = harness();
+  let calls = 0;
+  args.provider.generate = async () => {
+    calls++;
+    throw new AiError('timeout', 'Ollama timed out.');
+  };
+  await assert.rejects(analyzeArticle(args), { code: 'timeout' });
+  assert.equal(calls, 1);
+  const controller = new AbortController();
+  args.provider.generate = async () => {
+    calls++;
+    return { ...result, relevance: { ...result.relevance, evidence: ['P8'] } };
+  };
+  await assert.rejects(analyzeArticle({
+    ...args, signal: controller.signal, onRetry: () => controller.abort(),
+  }), { code: 'cancelled' });
+  assert.equal(calls, 2);
   assert.equal(args.entries.size, 0);
 });

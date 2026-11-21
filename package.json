@@ -1,0 +1,24 @@
+{
+  "name": "personal-knowledge-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A browser extension for building personal knowledge.",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "typecheck": "tsc --noEmit",
+    "build": "wxt build",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.1.5",
+    "typescript": "^5.9.3",
+    "wxt": "^0.21.5"
+  }
+}

@@ -16,10 +16,11 @@ type CheckState =
 type Draft = { answer: string; revealed: boolean; check: CheckState };
 const emptyDraft: Draft = { answer: '', revealed: false, check: { status: 'idle' } };
 
-export function RecallPractice({ questions, sourceById, modelName }: {
+export function RecallPractice({ questions, sourceById, modelName, analysisPending }: {
   questions: Analysis['recall'];
   sourceById: ReadonlyMap<string, Passage>;
   modelName: string;
+  analysisPending: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
@@ -54,7 +55,7 @@ export function RecallPractice({ questions, sourceById, modelName }: {
   }
 
   async function check() {
-    if (request.current || !question || !draft.answer.trim()) return;
+    if (request.current || analysisPending || !question || !draft.answer.trim()) return;
     const controller = new AbortController();
     request.current = controller;
     update({ check: { status: 'checking' } });
@@ -96,12 +97,13 @@ export function RecallPractice({ questions, sourceById, modelName }: {
           disabled={checking} onChange={(event) => update({ answer: event.target.value, check: { status: 'idle' } })} />
       </label>
       <div className="ai-actions">
-        <button type="button" disabled={checking || !draft.answer.trim()} onClick={() => void check()}>
+        <button type="button" disabled={checking || analysisPending || !draft.answer.trim()} onClick={() => void check()}>
           Check my answer
         </button>
         {checking && <button type="button" onClick={cancel}>Cancel answer check</button>}
       </div>
-      <p>Checking sends this draft to local Ollama for formative feedback.</p>
+      <p>{analysisPending ? 'You can check answers when the article analysis finishes.'
+        : 'Answer checks use local Ollama and provide formative feedback.'}</p>
       {checking && <p role="status">Checking your answer…</p>}
       {draft.check.status === 'cancelled' && <p role="status">Answer check cancelled. Your draft is still here.</p>}
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}

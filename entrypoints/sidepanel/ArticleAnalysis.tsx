@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { browser } from 'wxt/browser';
 
 import { analyzeArticle } from '../../lib/ai/analysis';
@@ -7,21 +7,21 @@ import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError } from '../../lib/ai/provider';
 import { RecallPractice } from './RecallPractice';
 import { SourceReference } from './SourceReference';
+import { recallSessionKey, updateAnalysis, type AnalysisResult } from './panel-state';
 import type { ExtractedArticle } from '../../lib/article';
-
-type AnalysisState =
-  | { status: 'idle' | 'running' | 'retrying' | 'cancelled' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; result: Awaited<ReturnType<typeof analyzeArticle>> };
 
 export function ArticleAnalysis({ article, goal, modelName }: {
   article: ExtractedArticle;
   goal: string;
   modelName: string;
 }) {
-  const [state, setState] = useState<AnalysisState>({ status: 'idle' });
+  const [state, setState] = useReducer(updateAnalysis, { status: 'idle' });
   const request = useRef<AbortController>(undefined);
-  useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => () => {
+    request.current?.abort();
+    request.current = undefined;
+  }, []);
+  const analyzing = state.status === 'running' || state.status === 'retrying';
 
   async function run() {
     if (request.current) return;
@@ -61,7 +61,7 @@ export function ArticleAnalysis({ article, goal, modelName }: {
       <h3>AI article analysis</h3>
       {!goal.trim() && <p>Add a learning goal to the selected Knowledge Space to analyze this article.</p>}
       {!modelName && <p>Choose an installed model in AI settings.</p>}
-      {state.status === 'running' || state.status === 'retrying' ? (
+      {analyzing ? (
         <>
           <p role="status">{state.status === 'retrying'
             ? 'Ollama returned an invalid result. Retrying once…'
@@ -73,9 +73,13 @@ export function ArticleAnalysis({ article, goal, modelName }: {
           Analyze with AI
         </button>
       )}
-      {state.status === 'cancelled' && <p role="status">Analysis cancelled.</p>}
-      {state.status === 'error' && <p role="alert">{state.message}</p>}
-      {state.status === 'ready' && <AnalysisResult {...state.result} modelName={modelName} />}
+      {state.status === 'cancelled' && (
+        <p role="status">{state.result ? 'Analysis cancelled. You can continue with your previous result.' : 'Analysis cancelled.'}</p>
+      )}
+      {state.status === 'error' && (
+        <p role="alert">{state.message}{state.result && ' You can continue with your previous result.'}</p>
+      )}
+      {state.result && <AnalysisResult {...state.result} modelName={modelName} analyzing={analyzing} />}
     </section>
   );
 }
@@ -84,9 +88,10 @@ function TextList({ items }: { items: string[] }) {
   return items.length > 0 && <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;
 }
 
-type AnalysisResult = Awaited<ReturnType<typeof analyzeArticle>>;
-
-function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName }: AnalysisResult & { modelName: string }) {
+function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName, analyzing }: AnalysisResult & {
+  modelName: string;
+  analyzing: boolean;
+}) {
   const { relevance, summary, concepts, recall } = analysis;
   const sourceById = new Map(passages.map((passage) => [passage.id, passage]));
   return (
@@ -120,7 +125,8 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         <li key={index}><strong>{term}</strong> {explanation}<SourceReference passage={sourceById.get(evidence)} /></li>
       ))}</ul>
 
-      <RecallPractice questions={recall} modelName={modelName} sourceById={sourceById} />
+      <RecallPractice key={recallSessionKey(recall)} questions={recall} modelName={modelName}
+        sourceById={sourceById} analysisPending={analyzing} />
     </>
   );
 }

@@ -4,6 +4,7 @@ import { createSpace, updateLearningGoal } from '../../lib/library';
 import { MAX_LEARNING_GOAL, MAX_SPACE_NAME, type KnowledgeSpace } from '../../lib/library-model';
 import { SaveStatus } from './SaveStatus';
 import { useAction } from './useAction';
+import { releaseSavedDraft } from './panel-state';
 
 type KnowledgeSpacesProps = {
   spaces: KnowledgeSpace[];
@@ -71,6 +72,7 @@ function LearningGoal({ space }: { space: KnowledgeSpace }) {
       event.preventDefault();
       void save.run(async () => {
         await updateLearningGoal(space.id, goal);
+        setDraft((current) => releaseSavedDraft(current, goal));
         return 'Learning goal saved.';
       });
     }}>

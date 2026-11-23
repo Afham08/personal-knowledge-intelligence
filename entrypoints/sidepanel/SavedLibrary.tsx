@@ -5,6 +5,7 @@ import { MAX_NOTE, type KnowledgeSpace, type Library, type SavedArticle, type Sp
 import type { ExtractedArticle } from '../../lib/article';
 import { SaveStatus } from './SaveStatus';
 import { useAction } from './useAction';
+import { releaseSavedDraft } from './panel-state';
 
 export function SaveArticle({ article, space }: { article: ExtractedArticle; space: KnowledgeSpace }) {
   const [note, setNote] = useState('');
@@ -68,6 +69,7 @@ function SavedArticleItem({ article, link }: { article: SavedArticle; link: Spac
         event.preventDefault();
         void save.run(async () => {
           await updateNote(link.spaceId, link.articleId, note);
+        setDraft((current) => releaseSavedDraft(current, note));
           return 'Note saved.';
         });
       }}>

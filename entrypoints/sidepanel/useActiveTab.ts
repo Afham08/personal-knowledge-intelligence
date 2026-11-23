@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { ACTIVE_TAB_REFRESH, getActiveTab, type ActiveTab } from '../../lib/active-tab';
-
-type TabState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; tab: ActiveTab | null };
+import { ACTIVE_TAB_REFRESH, getActiveTab } from '../../lib/active-tab';
+import { markTabLoading, tabSnapshot, type TabState } from './panel-state';
 
 export function useActiveTab(): TabState {
   const [state, setState] = useState<TabState>({ status: 'loading' });
@@ -18,15 +14,16 @@ export function useActiveTab(): TabState {
       const current = ++request;
       try {
         const tab = await getActiveTab();
-        if (current === request) setState({ status: 'ready', tab });
+        if (current === request) setState((state) => tabSnapshot(state, tab));
       } catch {
         if (current === request) setState({ status: 'error' });
       }
     }
 
     const onUpdate: Parameters<typeof browser.tabs.onUpdated.addListener>[0] = (
-      _tabId, change, tab,
+      tabId, change, tab,
     ) => {
+      if (change.status === 'loading') setState((state) => markTabLoading(state, tabId));
       if (tab.active && (change.url || change.title || change.status)) void refresh();
     };
     function onMessage(message: unknown) {

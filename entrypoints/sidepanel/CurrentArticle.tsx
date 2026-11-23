@@ -19,6 +19,7 @@ type CurrentArticleProps = { space?: KnowledgeSpace; libraryReady: boolean; ai?:
 export function CurrentArticle({ space, libraryReady, ai }: CurrentArticleProps) {
   const state = useActiveTab();
   const tab = state.status === 'ready' ? state.tab : null;
+  const documentVersion = state.status === 'ready' ? state.documentVersion : 0;
 
   return (
     <section aria-labelledby="current-tab">
@@ -29,7 +30,7 @@ export function CurrentArticle({ space, libraryReady, ai }: CurrentArticleProps)
       {tab && !tab.url && <p>Open a web article and click the PKI toolbar icon to grant access to that tab.</p>}
       {tab?.url && !isWebUrl(tab.url) && <p>This page is restricted. Open an HTTP or HTTPS article.</p>}
       {tab?.url && isWebUrl(tab.url) && (
-        <ArticleExtraction key={JSON.stringify([tab.id, tab.url])} tab={tab} space={space} libraryReady={libraryReady} ai={ai} />
+        <ArticleExtraction key={JSON.stringify([tab.id, tab.url, documentVersion])} tab={tab} space={space} libraryReady={libraryReady} ai={ai} />
       )}
     </section>
   );
@@ -55,9 +56,10 @@ function ArticleExtraction({ tab, space, libraryReady, ai }: ArticleExtractionPr
     <>
       <p><strong>{tab.title || 'Untitled page'}</strong></p>
       <p>{tab.url}</p>
-      <button type="button" disabled={state.status === 'loading'} onClick={() => void extract()}>
+      <button type="button" disabled={tab.loading || state.status === 'loading'} onClick={() => void extract()}>
         Extract article
       </button>
+      {tab.loading && <p role="status">Waiting for the page to finish loading…</p>}
       {state.status === 'loading' && <p role="status">Extracting article…</p>}
       {state.status === 'error' && <p role="alert">{state.message}</p>}
       {state.status === 'ready' && (

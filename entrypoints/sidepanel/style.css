@@ -6,7 +6,11 @@ body {
 }
 
 main {
-  padding: 16px;
+  padding: 12px clamp(8px, 4vw, 16px);
+}
+
+h1, h2, h3, h4, h5 {
+  margin: 0 0 8px;
 }
 
 h1 {
@@ -17,39 +21,64 @@ h2, h3 {
   font-size: 1rem;
 }
 
-section + section {
-  border-top: 1px solid #999;
-  margin-top: 16px;
-  padding-top: 8px;
-}
-
-button, input, select, textarea {
-  font: inherit;
-}
-
-form, label {
-  display: grid;
-  gap: 6px;
-}
-
-form {
+p, ul, ol, pre {
   margin: 8px 0;
 }
 
-input, select, textarea {
-  min-width: 0;
+ul, ol {
+  padding-inline-start: 20px;
 }
 
-textarea {
-  resize: vertical;
+section + section {
+  border-top: 1px solid #999;
+  margin-top: 16px;
+  padding-top: 12px;
 }
 
-button {
-  justify-self: start;
+details {
+  min-inline-size: 0;
+  margin-block: 6px;
 }
 
 summary {
   cursor: pointer;
+}
+
+button, input, select, textarea {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  font: inherit;
+}
+
+button {
+  justify-self: start;
+  min-block-size: 32px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+form, label {
+  display: grid;
+  min-inline-size: 0;
+  gap: 6px;
+}
+
+form, label {
+  margin-block: 8px;
+}
+
+form label {
+  margin: 0;
+}
+
+input, select, textarea {
+  inline-size: 100%;
+}
+
+textarea {
+  min-block-size: 3rem;
+  resize: vertical;
 }
 
 .article-text {
@@ -61,7 +90,9 @@ summary {
 .ai-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 6px;
+  margin-block: 8px;
 }
 
 .ai-command {
@@ -71,4 +102,9 @@ summary {
 
 [aria-label="AI article analysis"] li + li {
   margin-top: 8px;
+}
+
+[role="alert"] {
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid currentColor;
 }

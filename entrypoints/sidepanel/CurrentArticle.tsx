@@ -71,8 +71,8 @@ function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onS
               <summary>Read extracted text</summary>
               {state.article.truncated && <p>Showing the first 100,000 characters.</p>}
               <p className="article-text">{state.article.text}</p>
+              <button className="text-button" type="button" disabled={tab.loading} onClick={() => void extract()}>Capture again</button>
             </details>
-            <button className="text-button" type="button" disabled={tab.loading} onClick={() => void extract()}>Extract again</button>
             {space && <SaveArticle key={space.id} article={state.article} space={space} spaces={spaces} onSelect={onSelect} />}
             {libraryReady && !space && (
               <button className="button-primary" type="button" onClick={onSpaces}>Create a space to save this article</button>

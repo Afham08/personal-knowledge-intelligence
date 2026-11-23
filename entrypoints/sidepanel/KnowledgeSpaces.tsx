@@ -71,12 +71,12 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
               <div><h2>{space.name}</h2><p className="metadata">{count} {count === 1 ? 'article' : 'articles'}</p></div></div>
             {active ? (
               <>
-                <p className="active-space-label">Active for analysis</p>
+                <p className="active-space-label">Selected space</p>
                 <LearningGoal key={space.id} space={space} />
               </>
             ) : <p className="space-goal">{space.learningGoal || 'No learning goal set.'}</p>}
             <div className="button-row">
-              {!active && <button type="button" onClick={() => onSelect(space.id)}>Use for analysis</button>}
+              {!active && <button type="button" onClick={() => onSelect(space.id)}>Select space</button>}
               <button className="text-button" type="button" onClick={() => onViewArticles(space.id)}>
                 View articles <Icon name="arrow" />
               </button>

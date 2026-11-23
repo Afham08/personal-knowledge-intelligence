@@ -53,7 +53,7 @@
   button:hover:not(:disabled) { background: #f3f2fe; border-color: #c0bce2; }
   button:disabled { opacity: .65; cursor: default; }
   :focus-visible { outline: 2px solid #5041c4; outline-offset: 2px; }
-  [data-page-heading]:focus { outline: none; }
+  :is(h1, h3, summary):focus-visible { outline-offset: 3px; }
   label { display: grid; gap: 5px; min-inline-size: 0; font-weight: 650; }
   form { display: grid; gap: 10px; min-inline-size: 0; }
   form button { justify-self: start; }
@@ -223,7 +223,16 @@
   .row-copy small { color: var(--muted); font-weight: 500; }
   .row-copy .row-spaces { color: var(--accent-strong); }
   .list-row > svg { color: var(--accent); }
-  .space-card.space-active { border-color: #c6bcee; }
+  .space-card.space-active { border-inline-start: 3px solid var(--accent); }
+  .guide-steps { display: grid; gap: 8px; padding-inline-start: 1.5rem; }
+  .guide-steps li::marker { color: var(--accent); font-weight: 700; }
+  .guide-settings summary { color: var(--accent-strong); font-weight: 700; }
+  .guide-settings[open] .guide-steps { margin-block-start: 10px; }
+  .practice-card h3 { scroll-margin-block-start: 12px; }
+  @media (max-width: 300px) {
+    .app-header { padding-block: 8px; }
+    .page { gap: 10px; }
+  }
   .active-space-label { color: var(--accent); font-size: .84rem; font-weight: 700; }
   .space-goal { white-space: pre-wrap; color: var(--muted); }
   .library-filters { gap: 8px; }

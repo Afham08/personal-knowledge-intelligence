@@ -106,7 +106,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
 
   return (
     <>
-      <p>Ollama runs the model on your computer. Connect it to study articles and check practice answers.</p>
+      <p>Local AI is optional. Save articles and notes anytime. Connect Ollama on this computer for summaries and recall feedback.</p>
       <div className="section-heading connection-heading"><p><strong>Ollama</strong></p>
         <span className="badge" data-tone={connection.status === 'available' ? 'positive' : connection.status === 'error' ? 'negative' : undefined}>
           {connection.status === 'checking' ? 'Checking' : connection.status === 'error' ? 'Connection failed'
@@ -121,7 +121,8 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
       {connection.status === 'checking' && <p role="status">Checking Ollama…</p>}
       {connection.status === 'error' && <p role="alert">{connection.message}</p>}
       {connection.status === 'available' && (
-        <p role="status">{models.length ? 'Connected to Ollama.' : 'Connected to Ollama. Install a local model, then test again.'}</p>
+        <p role="status">{models.length ? (models.some(({ name }) => name === settings.modelName)
+            ? 'Ready to study with ' + settings.modelName + '.' : 'Connected. Choose an installed model below to start studying.') : 'Connected to Ollama. Install a local model, then test again.'}</p>
       )}
       {settings.enabled && (
         <label>
@@ -130,12 +131,13 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
             onChange={(event) => void selectModel(event.target.value)}>
             <option value="">Choose an installed local model</option>
             {settings.modelName && !models.some(({ name }) => name === settings.modelName) && (
-              <option value={settings.modelName} disabled>{settings.modelName} (saved, not verified)</option>
+              <option value={settings.modelName} disabled>{settings.modelName} ({connection.status === 'available' ? 'not installed' : 'saved, unverified'})</option>
             )}
             {models.map(({ name }) => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
       )}
+      {connection.status === 'unchecked' && settings.enabled && <p className="metadata">Test the connection to refresh installed models.</p>}
       {settingsError && <p role="alert">{settingsError}</p>}
       <details className="disclosure" open={connection.status === 'error' || (connection.status === 'available' && models.length === 0) || undefined}>
         <summary>Set up Ollama in Brave</summary>

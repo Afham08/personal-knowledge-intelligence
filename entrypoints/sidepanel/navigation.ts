@@ -7,6 +7,10 @@ export type Route =
   | { view: Destination }
   | { view: 'library'; articleId: string; from: 'home' | 'library' };
 
+export function studySpace(entry: LibraryEntry, preferredId?: string) {
+  return entry.memberships.find(({ space }) => space.id === preferredId)?.space ?? entry.memberships[0]?.space;
+}
+
 export function backFromArticle(route: Route): Route {
   return { view: 'from' in route ? route.from : 'library' };
 }

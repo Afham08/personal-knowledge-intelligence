@@ -18,6 +18,8 @@ type ExtractionState =
 
 type CurrentArticleProps = {
   space?: KnowledgeSpace;
+  spaces: KnowledgeSpace[];
+  onSelect: (id: string) => void;
   libraryReady: boolean;
   ai?: AiSettings;
   onSpaces: () => void;
@@ -44,7 +46,7 @@ export function CurrentArticle(props: CurrentArticleProps) {
   );
 }
 
-function ArticleExtraction({ tab, space, libraryReady, ai, onSpaces, onSettings }: CurrentArticleProps & { tab: ActiveTab }) {
+function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onSpaces, onSettings }: CurrentArticleProps & { tab: ActiveTab }) {
   const [state, setState] = useState<ExtractionState>({ status: 'idle' });
 
   async function extract() {
@@ -71,7 +73,7 @@ function ArticleExtraction({ tab, space, libraryReady, ai, onSpaces, onSettings 
               <p className="article-text">{state.article.text}</p>
             </details>
             <button className="text-button" type="button" disabled={tab.loading} onClick={() => void extract()}>Extract again</button>
-            {space && <SaveArticle key={space.id} article={state.article} space={space} onSpaces={onSpaces} />}
+            {space && <SaveArticle key={space.id} article={state.article} space={space} spaces={spaces} onSelect={onSelect} />}
             {libraryReady && !space && (
               <button type="button" onClick={onSpaces}>Create a space to save this article</button>
             )}

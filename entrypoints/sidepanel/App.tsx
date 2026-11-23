@@ -16,6 +16,8 @@ export default function App() {
   const state = useLibrary();
   const ai = useAiSettings();
   const [route, setRoute] = useState<Route>({ view: 'home' });
+  const [returnTo, setReturnTo] = useState<Route>();
+  const [reader, setReader] = useState<Extract<Route, { articleId: string }>>();
   const [spaceId, setSpaceId] = useState<string>();
   const [libraryFilter, setLibraryFilter] = useState('');
   const main = useRef<HTMLElement>(null);
@@ -33,11 +35,32 @@ export default function App() {
     area.querySelector<HTMLElement>('[data-view]:not([hidden]) [data-page-heading]')?.focus({ preventScroll: true });
   }, [route]);
 
+  function openSetup(view: 'spaces' | 'settings') {
+    setReturnTo(route);
+    setRoute({ view });
+  }
+
+  function returnToReading() {
+    if (!returnTo) return;
+    setRoute(returnTo);
+    setReturnTo(undefined);
+  }
+
+  const returnButton = returnTo && (
+    <button className="text-button back-button" type="button" onClick={returnToReading}>
+      <Icon name="back" /> {returnTo.view === 'home' ? 'Return to current page' : 'Return to saved article'}
+    </button>
+  );
+
   function openArticle(articleId: string, from: 'home' | 'library') {
-    setRoute({ view: 'library', articleId, from });
+    const next = { view: 'library', articleId, from } as const;
+    setReader(next);
+    setRoute(next);
   }
 
   function showSpaceArticles(id: string) {
+    setReader(undefined);
+    setReturnTo(undefined);
     setLibraryFilter(id);
     setRoute({ view: 'library' });
   }
@@ -57,19 +80,21 @@ export default function App() {
             <h1 data-page-heading tabIndex={-1}>Your reading desk</h1>
             <p>Capture an article, save it to a space, or study it with local AI.</p>
           </div>
-          <CurrentArticle space={selected} libraryReady={Boolean(library)}
+          <CurrentArticle space={selected} spaces={library?.spaces ?? []} onSelect={setSpaceId} libraryReady={Boolean(library)}
             ai={ai.status === 'ready' ? ai.settings : undefined}
-            onSpaces={() => setRoute({ view: 'spaces' })} onSettings={() => setRoute({ view: 'settings' })} />
+            onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
           {library && <>
             <section className="card" aria-labelledby="recent-heading">
               <div className="section-heading">
                 <h2 id="recent-heading">Recently saved</h2>
                 <button className="text-button" type="button" onClick={() => {
+                  setReader(undefined);
                   setLibraryFilter('');
                   setRoute({ view: 'library' });
                 }}>Open library <Icon name="arrow" /></button>
               </div>
+              {entries.length > 0 && <p className="metadata">Open an article to continue reading or practice recall.</p>}
               {entries.length ? <ul className="row-list">{entries.slice(0, 3).map((entry) => (
                 <li key={entry.article.id}><ArticleRow entry={entry} onOpen={() => openArticle(entry.article.id, 'home')} /></li>
               ))}</ul> : <p className="empty-copy">Articles you save to a Knowledge Space will appear here.</p>}
@@ -99,7 +124,7 @@ export default function App() {
         </div>
 
         <div data-view="spaces" hidden={route.view !== 'spaces'} className="page">
-          <div className="page-heading"><h1 data-page-heading tabIndex={-1}>Knowledge Spaces</h1>
+          <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Knowledge Spaces</h1>
             <p>Organize reading around the things you want to learn.</p></div>
           {library && <KnowledgeSpaces spaces={library.spaces} selected={selected} onSelect={setSpaceId}
             onViewArticles={showSpaceArticles} links={library.links} />}
@@ -107,13 +132,15 @@ export default function App() {
 
         <div data-view="library" hidden={route.view !== 'library'} className="page">
           {library && <SavedLibrary entries={entries} spaces={library.spaces} spaceFilter={libraryFilter}
-            onFilter={setLibraryFilter} route={route} onOpen={(id) => openArticle(id, 'library')}
-            onBack={() => setRoute(backFromArticle(route))} />}
+            onFilter={setLibraryFilter} route={reader ?? route} ai={ai.status === 'ready' ? ai.settings : undefined}
+            preferredSpace={reader?.from === 'library' && libraryFilter ? libraryFilter : selected?.id} onSettings={() => openSetup('settings')}
+            onSpaces={(id) => { setSpaceId(id); openSetup('spaces'); }} onOpen={(id) => openArticle(id, 'library')}
+            onBack={() => { setReader(undefined); setRoute(backFromArticle(route)); }} />}
           {!library && <div className="page-heading"><h1 data-page-heading tabIndex={-1}>Library</h1></div>}
         </div>
 
         <div data-view="settings" hidden={route.view !== 'settings'} className="page">
-          <div className="page-heading"><h1 data-page-heading tabIndex={-1}>Settings</h1>
+          <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Settings</h1>
             <p>Manage local AI and see what PKI stores.</p></div>
           <AiSettingsPanel state={ai} />
           <section className="card" aria-labelledby="privacy-heading">
@@ -128,7 +155,13 @@ export default function App() {
       <nav className="main-nav" aria-label="Main navigation">
         {destinations.map((view) => (
           <button key={view} type="button" aria-current={route.view === view ? 'page' : undefined}
-            aria-label={view === 'spaces' ? 'Knowledge Spaces' : undefined} onClick={() => setRoute({ view })}>
+            aria-label={view === 'spaces' ? 'Knowledge Spaces' : undefined} onClick={() => {
+              setReturnTo(undefined);
+              if (view === 'library' && route.view === 'library') {
+                setReader(undefined);
+                setRoute({ view });
+              } else setRoute(view === 'library' && reader ? reader : { view });
+            }}>
             <span className="nav-icon"><Icon name={view} /></span><span>{labels[view]}</span>
           </button>
         ))}

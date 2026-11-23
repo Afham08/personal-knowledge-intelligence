@@ -27,10 +27,6 @@ export function markTabLoading(state: TabState, tabId: number): TabState {
   return { ...state, tab: { ...state.tab, loading: true }, documentVersion: state.documentVersion + 1 };
 }
 
-export function releaseSavedDraft(current: string | undefined, submitted: string): string | undefined {
-  return current === submitted ? undefined : current;
-}
-
 export function recallSessionKey(questions: AnalysisResult['analysis']['recall']): string {
   return JSON.stringify(questions.map(({ question, answer, evidence }) => [question, answer, evidence]));
 }

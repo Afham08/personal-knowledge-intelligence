@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { articleHost, backFromArticle, destinations, filterLibrary, libraryEntries } from '../entrypoints/sidepanel/navigation.ts';
+import { articleHost, backFromArticle, destinations, filterLibrary, libraryEntries, studySpace } from '../entrypoints/sidepanel/navigation.ts';
 
 const library = {
   version: 1,
@@ -46,4 +46,11 @@ test('library search combines title, host or space with the selected space filte
   assert.deepEqual(ids('', 'a'), ['1']);
   assert.equal(articleHost(library.articles[0].url), 'example.org');
   assert.equal(articleHost('invalid'), '');
+});
+
+test('saved study uses a linked goal even when the active space is unrelated', () => {
+  const [entry] = libraryEntries(library);
+  assert.equal(studySpace(entry, 'a').learningGoal, 'Build a recall habit');
+  assert.equal(studySpace(entry, 'unrelated').id, 'b');
+  assert.equal(studySpace({ ...entry, memberships: [] }), undefined);
 });

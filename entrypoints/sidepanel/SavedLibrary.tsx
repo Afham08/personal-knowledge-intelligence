@@ -3,16 +3,19 @@ import { useState } from 'react';
 import type { ExtractedArticle } from '../../lib/article';
 import { saveArticle, updateNote } from '../../lib/library';
 import { MAX_NOTE, type KnowledgeSpace, type SpaceArticle } from '../../lib/library-model';
+import type { AiSettings } from '../../lib/ai/local-store';
+import { ArticleAnalysis } from './ArticleAnalysis';
 import { Icon } from './Icon';
 import { SaveStatus } from './SaveStatus';
-import { articleHost, filterLibrary, type LibraryEntry, type Route } from './navigation';
-import { releaseSavedDraft } from './panel-state';
+import { articleHost, filterLibrary, studySpace, type LibraryEntry, type Route } from './navigation';
+import { useDraft } from './useDraft';
 import { useAction } from './useAction';
 
-export function SaveArticle({ article, space, onSpaces }: {
-  article: ExtractedArticle; space: KnowledgeSpace; onSpaces: () => void;
+export function SaveArticle({ article, space, spaces, onSelect }: {
+  article: ExtractedArticle; space: KnowledgeSpace; spaces: KnowledgeSpace[]; onSelect: (id: string) => void;
 }) {
-  const [note, setNote] = useState('');
+  const draft = useDraft('capture', article.url, space.id);
+  const note = draft.value ?? '';
   const save = useAction();
 
   return (
@@ -20,19 +23,21 @@ export function SaveArticle({ article, space, onSpaces }: {
       event.preventDefault();
       void save.run(async () => {
         const added = await saveArticle(space.id, article, note);
+        if (added) draft.saved(note);
         return added ? 'Article saved to ' + space.name + '.'
           : 'This article is already in ' + space.name + '. You can edit its note in the library.';
       });
     }}>
-      <div className="section-heading">
-        <p className="save-destination">Save to <strong>{space.name}</strong></p>
-        <button className="text-button" type="button" onClick={onSpaces}>Change space</button>
-      </div>
+      <label>Save to Knowledge Space
+        <select value={space.id} onChange={(event) => onSelect(event.target.value)}>
+          {spaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
       <details className="disclosure capture-note">
         <summary>Add a note (optional)</summary>
         <label>Note
           <textarea value={note} maxLength={MAX_NOTE} placeholder="Add a thought to revisit later"
-            onChange={(event) => setNote(event.target.value)} />
+            onChange={(event) => draft.edit(event.target.value)} />
         </label>
       </details>
       <button className="button-primary" disabled={save.state.status === 'pending'}>Save article</button>
@@ -49,21 +54,28 @@ export function ArticleRow({ entry, onOpen }: { entry: LibraryEntry; onOpen: () 
       <span className="row-copy">
         <strong>{article.title}</strong>
         <small>{articleHost(article.url) || 'Web article'}</small>
-        <small className="row-spaces">{memberships.map(({ space }) => space.name).join(' · ')}</small>
+        <small className="row-spaces">{memberships.map(({ space }) => space.name).join(' Â· ')}</small>
       </span>
       <Icon name="arrow" />
     </button>
   );
 }
 
-export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, onOpen, onBack }: {
+type StudyOptions = {
+  ai?: AiSettings;
+  preferredSpace?: string;
+  onSettings: () => void;
+  onSpaces: (id: string) => void;
+};
+
+export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, onOpen, onBack, ...study }: StudyOptions & {
   entries: LibraryEntry[]; spaces: KnowledgeSpace[]; spaceFilter: string; onFilter: (id: string) => void;
   route: Route; onOpen: (id: string) => void; onBack: () => void;
 }) {
   const [query, setQuery] = useState('');
   if ('articleId' in route) {
     const entry = entries.find(({ article }) => article.id === route.articleId);
-    return <ArticleDetail key={route.articleId} entry={entry} backTo={route.from} onBack={onBack} />;
+    return <ArticleDetail {...study} key={route.articleId} entry={entry} backTo={route.from} onBack={onBack} />;
   }
 
   const filtered = filterLibrary(entries, query, spaceFilter);
@@ -102,8 +114,10 @@ export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, on
   );
 }
 
-function ArticleDetail({ entry, backTo, onBack }: { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onBack: () => void }) {
+function ArticleDetail({ entry, backTo, onBack, ai, preferredSpace, onSettings, onSpaces }: StudyOptions & { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onBack: () => void }) {
   const article = entry?.article;
+  const [spaceId, setSpaceId] = useState(preferredSpace);
+  const space = entry && studySpace(entry, spaceId);
   return (
     <>
       <div className="page-heading">
@@ -111,7 +125,7 @@ function ArticleDetail({ entry, backTo, onBack }: { entry: LibraryEntry | undefi
           <Icon name="back" /> {backTo === 'home' ? 'Back to Home' : 'Back to Library'}
         </button>
         <h1 data-page-heading tabIndex={-1}>{article?.title ?? 'Article unavailable'}</h1>
-        {article && <p>{articleHost(article.url)} · {article.text.length.toLocaleString()} characters saved</p>}
+        {article && <p>{articleHost(article.url)} Â· {article.text.length.toLocaleString()} characters saved</p>}
       </div>
       {article && entry && <>
         <section className="card" aria-labelledby="saved-reading">
@@ -120,8 +134,19 @@ function ArticleDetail({ entry, backTo, onBack }: { entry: LibraryEntry | undefi
               Open original <Icon name="external" />
             </a></div>
           {article.truncated && <p>The saved text contains the first 100,000 characters.</p>}
-          <details className="disclosure" open><summary>Read saved text</summary><p className="article-text">{article.text}</p></details>
+          <details className="disclosure"><summary>Read saved text</summary><p className="article-text">{article.text}</p></details>
         </section>
+        {ai?.enabled && space && <>
+          {entry.memberships.length > 1 && <label>Study in Knowledge Space
+            <select value={space.id} onChange={(event) => setSpaceId(event.target.value)}>
+              {entry.memberships.map(({ space: member }) => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </select>
+          </label>}
+          <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName])}
+            article={article} goal={space.learningGoal} modelName={ai.modelName}
+            onSpaces={() => onSpaces(space.id)} onSettings={onSettings} />
+        </>}
+        {ai && !ai.enabled && <button type="button" onClick={onSettings}>Set up local AI for recall practice</button>}
         <section className="card" aria-labelledby="saved-notes">
           <h2 id="saved-notes">Notes by space</h2>
           {entry.memberships.map(({ link, space }) => (
@@ -137,21 +162,21 @@ function ArticleDetail({ entry, backTo, onBack }: { entry: LibraryEntry | undefi
 }
 
 function NoteEditor({ link, spaceName }: { link: SpaceArticle; spaceName: string }) {
-  const [draft, setDraft] = useState<string>();
+  const draft = useDraft('note', link.articleId, link.spaceId);
   const save = useAction();
-  const note = draft ?? link.note;
+  const note = draft.value ?? link.note;
 
   return (
     <form onSubmit={(event) => {
       event.preventDefault();
       void save.run(async () => {
         await updateNote(link.spaceId, link.articleId, note);
-        setDraft((current) => releaseSavedDraft(current, note));
+        draft.saved(note);
         return 'Note saved.';
       });
     }}>
       <label>Note for {spaceName}
-        <textarea value={note} maxLength={MAX_NOTE} onChange={(event) => setDraft(event.target.value)} />
+        <textarea value={note} maxLength={MAX_NOTE} onChange={(event) => draft.edit(event.target.value)} />
       </label>
       <button disabled={save.state.status === 'pending' || note.trim() === link.note}>Save note</button>
       <SaveStatus state={save.state} />

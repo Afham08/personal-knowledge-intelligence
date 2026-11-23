@@ -120,6 +120,7 @@
   .app-main > [role="alert"], .app-main > [role="status"] { margin-block-end: 12px; }
   .page { display: grid; gap: 12px; max-inline-size: 660px; margin-inline: auto; }
   .page-heading { display: grid; gap: 5px; margin-block-end: 1px; }
+  .page-heading .back-button { justify-self: start; }
   .page-heading p, .metadata { color: var(--muted); }
   .main-nav {
     position: relative;
@@ -167,13 +168,12 @@
   }
   .section-heading { justify-content: space-between; }
   .card-heading > div, .card-heading > h2 { flex: 1; min-inline-size: 0; }
-  .section-heading :is(h2, h3, h4, .save-destination) { min-inline-size: min(100%, 95px); flex: 1; }
+  .section-heading :is(h2, h3, h4) { min-inline-size: min(100%, 95px); flex: 1; }
   .capture-card { background: #f0eeff; border-color: #d8d2f3; }
   .capture-card .row-icon { background: #e3ddff; }
   .capture-card > .button-primary { justify-self: start; }
   .capture-title { font-size: 1.27rem; letter-spacing: -.027em; }
   .capture-save { padding-block-start: 8px; border-block-start: 1px solid #d8d2f3; }
-  .capture-save .save-destination { color: var(--accent-strong); }
   .button-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
   .button-primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
   .text-button {

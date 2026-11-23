@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useId, useReducer, useRef } from 'react';
 import { browser } from 'wxt/browser';
 
 import { analyzeArticle } from '../../lib/ai/analysis';
@@ -61,6 +61,7 @@ export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings
   return (
     <section className="card analysis-card" aria-label="AI article analysis">
       <h2>Article analysis</h2>
+      {goal.trim() && <p className="metadata"><strong>Learning goal</strong> {goal}</p>}
       {!goal.trim() && <p>Add a learning goal to guide this analysis. <button className="text-button"
         type="button" onClick={onSpaces}>Open Spaces</button></p>}
       {!modelName && <p>Choose an installed model to begin. <button className="text-button"
@@ -82,9 +83,9 @@ export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings
         <p role="status">{state.result ? 'Analysis cancelled. You can continue with your previous result.' : 'Analysis cancelled.'}</p>
       )}
       {state.status === 'error' && (
-        <p role="alert">{state.message}{state.result && ' You can continue with your previous result.'}</p>
+        <p role="alert">{state.message} <button type="button" className="text-button" onClick={onSettings}>Open Settings</button>{state.result && ' You can continue with your previous result.'}</p>
       )}
-      {state.result && <AnalysisResult {...state.result} modelName={modelName} analyzing={analyzing} />}
+      {state.result && <AnalysisResult context={JSON.stringify([article.url, goal, modelName])} {...state.result} modelName={modelName} analyzing={analyzing} />}
     </section>
   );
 }
@@ -93,17 +94,19 @@ function TextList({ items }: { items: string[] }) {
   return items.length > 0 && <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;
 }
 
-function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName, analyzing }: AnalysisResult & {
+function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName, analyzing, context }: AnalysisResult & {
+  context: string;
   modelName: string;
   analyzing: boolean;
 }) {
+  const id = useId();
   const { relevance, summary, concepts, recall } = analysis;
   const sourceById = new Map(passages.map((passage) => [passage.id, passage]));
   return (
     <>
       {cached && <p role="status">Using a cached analysis.</p>}
-      <section className="analysis-block" aria-labelledby="relevance-heading">
-        <div className="section-heading"><h3 id="relevance-heading">Relevance</h3>
+      <section className="analysis-block" aria-labelledby={id + '-relevance'}>
+        <div className="section-heading"><h3 id={id + '-relevance'}>Relevance</h3>
           <span className="badge" data-tone={relevance.level === 'High' ? 'positive' : relevance.level === 'Medium' ? 'partial' : undefined}>
             {relevance.level} relevance
           </span></div>
@@ -113,8 +116,8 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         <div>{relevance.evidence.map((evidence, index) => <SourceReference key={index} passage={sourceById.get(evidence)} />)}</div>
       </section>
 
-      <section className="analysis-block" aria-labelledby="summary-heading">
-        <h3 id="summary-heading">Summary</h3>
+      <section className="analysis-block" aria-labelledby={id + '-summary'}>
+        <h3 id={id + '-summary'}>Summary</h3>
         <p>{summary.overview}</p>
         <details className="disclosure">
           <summary>Main ideas and takeaways</summary>
@@ -143,7 +146,7 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         {passages.map((passage) => <SourceReference key={passage.id} passage={passage} />)}
       </details>
 
-      <RecallPractice key={recallSessionKey(recall)} questions={recall} modelName={modelName}
+      <RecallPractice key={recallSessionKey(recall)} context={context} questions={recall} modelName={modelName}
         sourceById={sourceById} analysisPending={analyzing} />
     </>
   );

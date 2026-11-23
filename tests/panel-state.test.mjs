@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { markTabLoading, recallSessionKey, releaseSavedDraft, tabSnapshot, updateAnalysis } from '../entrypoints/sidepanel/panel-state.ts';
+import { markTabLoading, recallSessionKey, tabSnapshot, updateAnalysis } from '../entrypoints/sidepanel/panel-state.ts';
 
 test('a replacement analysis preserves the previous result through loading, retry, failure and cancellation', () => {
   const previous = { analysis: { recall: [{ question: 'What was the main point?' }] } };
@@ -32,13 +32,6 @@ test('a same-URL reload invalidates extracted state even if the next snapshot is
   assert.equal(loading.documentVersion, 1);
   assert.equal(tabSnapshot(loading, tab).documentVersion, 1);
   assert.equal(tabSnapshot(loading, { ...tab, id: 8 }).documentVersion, 0);
-});
-
-test('a successful save releases the submitted draft but preserves edits made during the save', () => {
-  assert.equal(releaseSavedDraft('Edited goal', 'Edited goal'), undefined);
-  assert.equal(releaseSavedDraft('', ''), undefined);
-  assert.equal(releaseSavedDraft('Keep typing', 'Earlier draft'), 'Keep typing');
-  assert.equal(releaseSavedDraft(undefined, 'Earlier draft'), undefined);
 });
 
 test('a cached round trip preserves the recall session even when storage reorders its fields', () => {

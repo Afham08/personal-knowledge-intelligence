@@ -1,22 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError, type Passage } from '../../lib/ai/provider';
 import { checkRecallAnswer, MAX_RECALL_ANSWER_LENGTH } from '../../lib/ai/recall';
 import type { Analysis } from '../../lib/ai/schema';
+import { useDraft } from './useDraft';
 import { SourceReference } from './SourceReference';
 
 type CheckResult = Awaited<ReturnType<typeof checkRecallAnswer>>;
 type CheckState =
   | { status: 'idle' | 'checking' | 'cancelled' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; result: CheckResult };
+  | { status: 'ready'; result: CheckResult; answer: string };
 
-type Draft = { answer: string; revealed: boolean; check: CheckState };
-const emptyDraft: Draft = { answer: '', revealed: false, check: { status: 'idle' } };
+type Draft = { revealed: boolean; check: CheckState };
+const emptyDraft: Draft = { revealed: false, check: { status: 'idle' } };
 
-export function RecallPractice({ questions, sourceById, modelName, analysisPending }: {
+export function RecallPractice({ context, questions, sourceById, modelName, analysisPending }: {
+  context: string;
   questions: Analysis['recall'];
   sourceById: ReadonlyMap<string, Passage>;
   modelName: string;
@@ -32,8 +34,11 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
 
   const question = questions[index];
   const draft = drafts[index] ?? emptyDraft;
+  const passage = question && sourceById.get(question.evidence);
+  const heading = useId();
+  const answerDraft = useDraft('recall', context, question?.question ?? '', question?.answer ?? '', passage?.text ?? '');
+  const answer = answerDraft.value ?? '';
   if (!question) return null;
-  const passage = sourceById.get(question.evidence);
 
   function update(changes: Partial<Draft>) {
     setDrafts((current) => ({
@@ -55,7 +60,7 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
   }
 
   async function check() {
-    if (request.current || analysisPending || !question || !draft.answer.trim()) return;
+    if (request.current || analysisPending || !question || !answer.trim()) return;
     const controller = new AbortController();
     request.current = controller;
     update({ check: { status: 'checking' } });
@@ -65,13 +70,13 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
       const result = await checkRecallAnswer({
         question: question.question,
         expectedAnswer: question.answer,
-        answer: draft.answer,
+        answer,
         passage,
         modelName,
         provider: ollamaProvider,
         signal: controller.signal,
       });
-      if (request.current === controller) update({ check: { status: 'ready', result } });
+      if (request.current === controller) update({ check: { status: 'ready', result, answer } });
     } catch (error) {
       if (request.current === controller) {
         update({
@@ -88,17 +93,20 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
 
   const checking = draft.check.status === 'checking';
   return (
-    <section className="practice-card" aria-labelledby="active-recall">
-      <div className="section-heading"><h3 id="active-recall">Active recall</h3>
+    <section className="practice-card" aria-labelledby={heading}>
+      <div className="section-heading"><h3 id={heading}>Active recall</h3>
         <p className="metadata" aria-live="polite">Question {index + 1} of {questions.length}</p></div>
       <progress value={index + 1} max={questions.length} aria-label="Recall progress" />
       <label>
         {question.question}
-        <textarea value={draft.answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
-          disabled={checking} onChange={(event) => update({ answer: event.target.value, check: { status: 'idle' } })} />
+        <textarea value={answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
+          disabled={checking} onChange={(event) => {
+            answerDraft.edit(event.target.value);
+            update({ check: { status: 'idle' } });
+          }} />
       </label>
       <div className="button-row">
-        <button className="button-primary" type="button" disabled={checking || analysisPending || !draft.answer.trim()} onClick={() => void check()}>
+        <button className="button-primary" type="button" disabled={checking || analysisPending || !answer.trim()} onClick={() => void check()}>
           Check my answer
         </button>
         {checking && <button type="button" onClick={cancel}>Cancel answer check</button>}
@@ -108,7 +116,7 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
       {checking && <p role="status">Checking your answer…</p>}
       {draft.check.status === 'cancelled' && <p role="status">Answer check cancelled. Your draft is still here.</p>}
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}
-      {draft.check.status === 'ready' && <Feedback result={draft.check.result} />}
+      {draft.check.status === 'ready' && draft.check.answer === answer && <Feedback result={draft.check.result} />}
       <div><button className="text-button" type="button" aria-expanded={draft.revealed}
         onClick={() => update({ revealed: !draft.revealed })}>
         {draft.revealed ? 'Hide expected answer' : 'Reveal expected answer'}

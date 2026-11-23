@@ -4,7 +4,7 @@ import { createSpace, updateLearningGoal } from '../../lib/library';
 import { MAX_LEARNING_GOAL, MAX_SPACE_NAME, type KnowledgeSpace, type SpaceArticle } from '../../lib/library-model';
 import { Icon } from './Icon';
 import { SaveStatus } from './SaveStatus';
-import { releaseSavedDraft } from './panel-state';
+import { useDraft } from './useDraft';
 import { useAction } from './useAction';
 
 type KnowledgeSpacesProps = {
@@ -49,11 +49,11 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
           }}>
             {spaces.length === 0 && <p className="empty-copy">Create your first space to save an article and set a goal for analysis.</p>}
             <label>Space name
-              <input value={name} maxLength={MAX_SPACE_NAME} required placeholder="e.g. Climate science"
+              <input disabled={create.state.status === 'pending'} value={name} maxLength={MAX_SPACE_NAME} required placeholder="e.g. Climate science"
                 onChange={(event) => setName(event.target.value)} />
             </label>
             <label>Learning goal <span className="field-hint">Optional</span>
-              <textarea value={goal} maxLength={MAX_LEARNING_GOAL} placeholder="What do you want to understand?"
+              <textarea disabled={create.state.status === 'pending'} value={goal} maxLength={MAX_LEARNING_GOAL} placeholder="What do you want to understand?"
                 onChange={(event) => setGoal(event.target.value)} />
             </label>
             <button className="button-primary" disabled={create.state.status === 'pending' || !name.trim()}>Create space</button>
@@ -89,22 +89,22 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
 }
 
 function LearningGoal({ space }: { space: KnowledgeSpace }) {
-  const [draft, setDraft] = useState<string>();
+  const draft = useDraft('goal', space.id);
   const save = useAction();
-  const goal = draft ?? space.learningGoal;
+  const goal = draft.value ?? space.learningGoal;
 
   return (
     <form onSubmit={(event) => {
       event.preventDefault();
       void save.run(async () => {
         await updateLearningGoal(space.id, goal);
-        setDraft((current) => releaseSavedDraft(current, goal));
+        draft.saved(goal);
         return 'Learning goal saved.';
       });
     }}>
       <label>Learning goal
         <textarea value={goal} maxLength={MAX_LEARNING_GOAL} placeholder="What do you want to learn?"
-          onChange={(event) => setDraft(event.target.value)} />
+          onChange={(event) => draft.edit(event.target.value)} />
       </label>
       <button disabled={save.state.status === 'pending' || goal.trim() === space.learningGoal}>Save goal</button>
       <SaveStatus state={save.state} />

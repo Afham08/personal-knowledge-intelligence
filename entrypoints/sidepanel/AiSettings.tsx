@@ -67,7 +67,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
     try {
       // Request directly from the click handler to preserve the browser's user gesture.
       const allowed = await browser.permissions.request(loopbackPermission);
-      if (!allowed) throw new AiError('permission', 'Loopback access was declined. Grant it to connect to Ollama.');
+      if (!allowed) throw new AiError('permission', 'Brave declined access to local Ollama. Retry the connection and allow access to 127.0.0.1 when prompted.');
       if (!settings.enabled) await updateAiSettings({ enabled: true });
       setConnection({ status: 'available', models: await ollamaProvider.listModels() });
     } catch (error) {
@@ -106,16 +106,18 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
 
   return (
     <>
+      <p>Ollama runs the model on your computer. Connect it to study articles and check practice answers.</p>
       <div className="section-heading connection-heading"><p><strong>Ollama</strong></p>
-        <span className="badge" data-tone={settings.enabled ? 'positive' : undefined}>{settings.enabled ? 'AI enabled' : 'AI disabled'}</span></div>
+        <span className="badge" data-tone={connection.status === 'available' ? 'positive' : connection.status === 'error' ? 'negative' : undefined}>
+          {connection.status === 'checking' ? 'Checking' : connection.status === 'error' ? 'Connection failed'
+            : connection.status === 'available' ? 'Connected' : settings.enabled ? 'Connection unchecked' : 'AI off'}</span></div>
       {settings.enabled ? (
         <div className="button-row">
-          <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>Test connection</button>
+          <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>{connection.status === 'error' ? 'Retry connection' : 'Test connection'}</button>
           <button type="button" disabled={busy} onClick={() => void disable()}>Disable AI</button>
         </div>
-      ) : <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>Enable local AI</button>}
+      ) : <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>{connection.status === 'error' ? 'Retry connection' : 'Enable local AI'}</button>}
 
-      {connection.status === 'unchecked' && <p>Connection: not checked in this panel.</p>}
       {connection.status === 'checking' && <p role="status">Checking Ollama…</p>}
       {connection.status === 'error' && <p role="alert">{connection.message}</p>}
       {connection.status === 'available' && (
@@ -137,14 +139,16 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
       {settingsError && <p role="alert">{settingsError}</p>}
       <details className="disclosure" open={connection.status === 'error' || (connection.status === 'available' && models.length === 0) || undefined}>
         <summary>Set up Ollama in Brave</summary>
-        <p>Install Ollama and download a local chat model such as <code>qwen2.5:1.5b</code>. Start Ollama on port 11434 with cloud features off. In PowerShell, quit any existing Ollama instance before starting:</p>
+        <p>Install Ollama for Windows. If it is running, quit it from the system tray. Open PowerShell and run these commands to allow this extension to use Ollama on this computer.</p>
         <pre className="ai-command">{[
           '$env:OLLAMA_HOST = "127.0.0.1:11434"',
           '$env:OLLAMA_NO_CLOUD = "1"',
           '$env:OLLAMA_ORIGINS = "chrome-extension://' + browser.runtime.id + '"',
           'ollama serve',
         ].join('\n')}</pre>
-        <p>Use another PowerShell window for <code>ollama pull qwen2.5:1.5b</code>, then test the connection and choose the model.</p>
+        <p>Leave that window open. In a second PowerShell window, install a small model:</p>
+        <pre className="ai-command">ollama pull qwen2.5:1.5b</pre>
+        <p>Once the download finishes, connect above and select the model.</p>
       </details>
     </>
   );

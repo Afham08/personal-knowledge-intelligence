@@ -95,7 +95,7 @@ export function createOllamaProvider({
       });
       if (!response.ok) {
         void response.body?.cancel().catch(() => undefined);
-        if (response.status === 403) throw new AiError('permission', 'Ollama denied access. Check its allowed extension origin and local-only configuration.');
+        if (response.status === 403) throw new AiError('permission', 'Ollama denied this extension access. In Settings, expand Set up Ollama in Brave and restart Ollama with the exact extension origin shown.');
         if (response.status === 404 && route === '/api/chat') throw new AiError('model', 'Ollama could not load the selected model. Refresh the model list.');
         if ([429, 503].includes(response.status)) throw new AiError('busy', 'Ollama is busy or temporarily unavailable. Try again shortly.');
         throw new AiError('connection', 'Ollama returned HTTP ' + response.status + '. Check that the model can run in Ollama.');
@@ -105,7 +105,7 @@ export function createOllamaProvider({
       if (signal?.aborted) checkCancelled(signal);
       if (controller.signal.aborted) throw new AiError('timeout', 'Ollama timed out. Check that it is running or try a smaller model.');
       if (error instanceof AiError) throw error;
-      throw new AiError('connection', 'Could not reach Ollama at 127.0.0.1:11434. Start Ollama and check the setup below.');
+      throw new AiError('connection', 'Could not reach Ollama at 127.0.0.1:11434. Open Settings for startup commands, then retry the connection.');
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', cancel);

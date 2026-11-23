@@ -11,9 +11,10 @@ import { articleHost, filterLibrary, studySpace, type LibraryEntry, type Route }
 import { useDraft } from './useDraft';
 import { useAction } from './useAction';
 
-export function SaveArticle({ article, space, spaces, onSelect }: {
-  article: ExtractedArticle; space: KnowledgeSpace; spaces: KnowledgeSpace[]; onSelect: (id: string) => void;
+export function SaveArticle({ article, space, spaces, onSelect, onOpenSaved }: {
+  article: ExtractedArticle; space: KnowledgeSpace; spaces: KnowledgeSpace[]; onSelect: (id: string) => void; onOpenSaved: (id: string) => void;
 }) {
+  const [savedId, setSavedId] = useState<string>();
   const draft = useDraft('capture', article.url, space.id);
   const note = draft.value ?? '';
   const save = useAction();
@@ -21,8 +22,10 @@ export function SaveArticle({ article, space, spaces, onSelect }: {
   return (
     <form className="capture-save" onSubmit={(event) => {
       event.preventDefault();
+      if (savedId) return;
       void save.run(async () => {
-        const added = await saveArticle(space.id, article, note);
+        const { added, articleId } = await saveArticle(space.id, article, note);
+        setSavedId(articleId);
         if (added) draft.saved(note);
         return added ? 'Article saved to ' + space.name + '.'
           : 'This article is already in ' + space.name + '. You can edit its note in the library.';
@@ -33,15 +36,18 @@ export function SaveArticle({ article, space, spaces, onSelect }: {
           {spaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>
-      <details className="disclosure capture-note">
+      {(!savedId || note) && <details className="disclosure capture-note">
         <summary>Add a note (optional)</summary>
         <label>Note
-          <textarea value={note} maxLength={MAX_NOTE} placeholder="Add a thought to revisit later"
+          <textarea readOnly={Boolean(savedId)} value={note} maxLength={MAX_NOTE} placeholder="Add a thought to revisit later"
             onChange={(event) => draft.edit(event.target.value)} />
         </label>
-      </details>
-      <button className="button-primary" disabled={save.state.status === 'pending'}>Save article</button>
+      </details>}
+      {savedId ? <button className="button-primary" type="button" onClick={() => onOpenSaved(savedId)}>
+        Open saved article <Icon name="arrow" />
+      </button> : <button className="button-primary" disabled={save.state.status === 'pending'}>Save article</button>}
       <SaveStatus state={save.state} />
+      {savedId && note && <p className="metadata">This draft is still here to copy. Edit the saved note in the article.</p>}
     </form>
   );
 }
@@ -108,7 +114,11 @@ export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, on
           ))}</ul>
         ) : <p className="empty-copy">{entries.length
           ? 'No articles match these filters. Try another search or choose All spaces.'
-          : 'Save your first article from Home. It will appear here with any notes you add.'}</p>}
+          : 'On Home, capture a web article and save it to a Knowledge Space. You can read it here with AI off.'}</p>}
+        {!filtered.length && entries.length > 0 && <button className="text-button" type="button" onClick={() => {
+          setQuery('');
+          onFilter('');
+        }}>Clear filters</button>}
       </section>
     </>
   );
@@ -127,6 +137,7 @@ function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSe
           {backTo === 'home' && <button type="button" className="text-button" onClick={onList}>Library list</button>}
         </div>
         <h1 data-page-heading tabIndex={-1}>{article?.title ?? 'Article unavailable'}</h1>
+        {!article && <p role="status">This article is no longer in the local library. Return to the list to choose another.</p>}
         {article && <p>{articleHost(article.url)} · {article.text.length.toLocaleString()} characters saved</p>}
       </div>
       {article && entry && <>

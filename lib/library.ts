@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 
 import type { ExtractedArticle } from './article';
 import {
-  attachArticle, emptyLibrary, identifyArticle, MAX_LEARNING_GOAL, MAX_NOTE, MAX_SPACE_NAME,
+  attachArticle, editArticleNote, emptyLibrary, identifyArticle, MAX_LEARNING_GOAL, MAX_SPACE_NAME,
   type Library,
 } from './library-model';
 
@@ -60,16 +60,12 @@ export async function updateLearningGoal(spaceId: string, learningGoal: string):
   }));
 }
 
-export async function saveArticle(spaceId: string, article: ExtractedArticle, note: string): Promise<boolean> {
+export async function saveArticle(spaceId: string, article: ExtractedArticle, note: string) {
   const identified = await identifyArticle(article);
-  return updateLibrary((current) => attachArticle(current, identified, spaceId, note));
+  const added = await updateLibrary((current) => attachArticle(current, identified, spaceId, note));
+  return { articleId: identified.id, added };
 }
 
 export async function updateNote(spaceId: string, articleId: string, note: string): Promise<void> {
-  await updateLibrary((current) => ({
-    ...current,
-    links: current.links.map((link) =>
-      link.spaceId === spaceId && link.articleId === articleId ? { ...link, note: note.trim().slice(0, MAX_NOTE) } : link,
-    ),
-  }));
+  await updateLibrary((current) => editArticleNote(current, spaceId, articleId, note));
 }

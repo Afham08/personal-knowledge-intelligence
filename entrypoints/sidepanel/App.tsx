@@ -111,7 +111,7 @@ export default function App() {
           </div>
           <CurrentArticle space={selected} spaces={library?.spaces ?? []} onSelect={setSpaceId} libraryReady={Boolean(library)}
             ai={ai.status === 'ready' ? ai.settings : undefined}
-            onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
+            onOpenSaved={(id) => openArticle(id, 'home')} onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
           <WelcomeGuide onDismiss={() => {
             const home = main.current?.querySelector<HTMLElement>('[data-view="home"]:not([hidden])');

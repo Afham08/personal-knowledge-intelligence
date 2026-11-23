@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { attachArticle, emptyLibrary, identifyArticle } from '../lib/library-model.ts';
+import { attachArticle, editArticleNote, emptyLibrary, identifyArticle } from '../lib/library-model.ts';
 
 const extracted = {
   url: 'https://example.org/article?id=12#heading',
@@ -42,4 +42,16 @@ test('duplicate saves preserve the original text and note and reuse content acro
     ['two', 'Second note'],
   ]);
   assert.throws(() => attachArticle(saved, article, 'missing', ''));
+});
+
+test('reopening a serialized library keeps the captured text and isolates each space note', async () => {
+  const article = await identifyArticle(extracted);
+  const spaces = ['a', 'b'].map(id => ({ id, name: id, learningGoal: '' }));
+  const saved = attachArticle(attachArticle({ ...emptyLibrary, spaces }, article, 'a', 'First'), article, 'b', 'Second');
+  const reopened = JSON.parse(JSON.stringify(saved));
+  const edited = editArticleNote(reopened, 'b', article.id, ' Revised ');
+  assert.deepEqual(edited.articles, [article]);
+  assert.deepEqual(edited.links.map(link => link.note), ['First', 'Revised']);
+  assert.equal(editArticleNote(edited, 'b', article.id, 'Revised'), edited);
+  assert.throws(() => editArticleNote(edited, 'removed', article.id, 'Keep this draft'), /no longer saved/);
 });

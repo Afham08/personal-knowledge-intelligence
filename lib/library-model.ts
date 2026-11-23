@@ -54,3 +54,11 @@ export function attachArticle(
     links: [...library.links, { spaceId, articleId: article.id, note: note.trim().slice(0, MAX_NOTE) }],
   };
 }
+
+export function editArticleNote(library: Library, spaceId: string, articleId: string, note: string): Library {
+  const link = library.links.find((item) => item.spaceId === spaceId && item.articleId === articleId);
+  if (!link) throw new Error('This article is no longer saved in this Knowledge Space.');
+  const cleanNote = note.trim().slice(0, MAX_NOTE);
+  if (cleanNote === link.note) return library;
+  return { ...library, links: library.links.map((item) => item === link ? { ...item, note: cleanNote } : item) };
+}

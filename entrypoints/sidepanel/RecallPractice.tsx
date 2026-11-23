@@ -94,7 +94,7 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
   const checking = draft.check.status === 'checking';
   return (
     <section className="practice-card" aria-labelledby={heading}>
-      <div className="section-heading"><h3 id={heading}>Active recall</h3>
+      <div className="section-heading"><h3 id={heading} tabIndex={-1}>Active recall</h3>
         <p className="metadata" aria-live="polite">Question {index + 1} of {questions.length}</p></div>
       <progress value={index + 1} max={questions.length} aria-label="Recall progress" />
       <label>

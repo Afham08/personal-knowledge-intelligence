@@ -5,6 +5,7 @@ import { analyzeArticle } from '../../lib/ai/analysis';
 import { localAnalysisCache } from '../../lib/ai/local-store';
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError } from '../../lib/ai/provider';
+import { Icon } from './Icon';
 import { RecallPractice } from './RecallPractice';
 import { SourceReference } from './SourceReference';
 import { recallSessionKey, updateAnalysis, type AnalysisResult } from './panel-state';
@@ -100,11 +101,19 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
   analyzing: boolean;
 }) {
   const id = useId();
+  const practice = useRef<HTMLDivElement>(null);
   const { relevance, summary, concepts, recall } = analysis;
   const sourceById = new Map(passages.map((passage) => [passage.id, passage]));
   return (
     <>
-      {cached && <p role="status">Using a cached analysis.</p>}
+      <div className="section-heading">
+        <p role="status">{cached ? 'Using a cached analysis.' : 'Analysis ready.'}</p>
+        <button type="button" className="text-button" onClick={() => {
+          const heading = practice.current?.querySelector<HTMLElement>('h3');
+          heading?.focus();
+          heading?.scrollIntoView({ block: 'start' });
+        }}>Go to recall <Icon name="arrow" /></button>
+      </div>
       <section className="analysis-block" aria-labelledby={id + '-relevance'}>
         <div className="section-heading"><h3 id={id + '-relevance'}>Relevance</h3>
           <span className="badge" data-tone={relevance.level === 'High' ? 'positive' : relevance.level === 'Medium' ? 'partial' : undefined}>
@@ -146,8 +155,8 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         {passages.map((passage) => <SourceReference key={passage.id} passage={passage} />)}
       </details>
 
-      <RecallPractice key={recallSessionKey(recall)} context={context} questions={recall} modelName={modelName}
-        sourceById={sourceById} analysisPending={analyzing} />
+      <div ref={practice}><RecallPractice key={recallSessionKey(recall)} context={context} questions={recall} modelName={modelName}
+        sourceById={sourceById} analysisPending={analyzing} /></div>
     </>
   );
 }

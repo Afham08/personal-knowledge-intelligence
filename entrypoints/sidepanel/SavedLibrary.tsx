@@ -46,15 +46,15 @@ export function SaveArticle({ article, space, spaces, onSelect }: {
   );
 }
 
-export function ArticleRow({ entry, onOpen }: { entry: LibraryEntry; onOpen: () => void }) {
+export function ArticleRow({ entry, onOpen, resume }: { entry: LibraryEntry; resume?: boolean; onOpen: () => void }) {
   const { article, memberships } = entry;
   return (
-    <button className="list-row" type="button" onClick={onOpen}>
+    <button className="list-row" data-article-id={article.id} type="button" onClick={onOpen}>
       <span className="row-icon"><Icon name="page" /></span>
       <span className="row-copy">
         <strong>{article.title}</strong>
-        <small>{articleHost(article.url) || 'Web article'}</small>
-        <small className="row-spaces">{memberships.map(({ space }) => space.name).join(' Â· ')}</small>
+        <small>{resume && 'Resume reading \u00b7 '}{articleHost(article.url) || 'Web article'}</small>
+        <small className="row-spaces">{memberships.map(({ space }) => space.name).join(' · ')}</small>
       </span>
       <Icon name="arrow" />
     </button>
@@ -68,14 +68,14 @@ type StudyOptions = {
   onSpaces: (id: string) => void;
 };
 
-export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, onOpen, onBack, ...study }: StudyOptions & {
+export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, onOpen, onBack, onList, ...study }: StudyOptions & {
   entries: LibraryEntry[]; spaces: KnowledgeSpace[]; spaceFilter: string; onFilter: (id: string) => void;
-  route: Route; onOpen: (id: string) => void; onBack: () => void;
+  route: Route; onOpen: (id: string) => void; onList: () => void; onBack: () => void;
 }) {
   const [query, setQuery] = useState('');
   if ('articleId' in route) {
     const entry = entries.find(({ article }) => article.id === route.articleId);
-    return <ArticleDetail {...study} key={route.articleId} entry={entry} backTo={route.from} onBack={onBack} />;
+    return <ArticleDetail {...study} key={route.articleId} entry={entry} backTo={route.from} onBack={onBack} onList={onList} />;
   }
 
   const filtered = filterLibrary(entries, query, spaceFilter);
@@ -114,18 +114,20 @@ export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, on
   );
 }
 
-function ArticleDetail({ entry, backTo, onBack, ai, preferredSpace, onSettings, onSpaces }: StudyOptions & { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onBack: () => void }) {
+function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSettings, onSpaces }: StudyOptions & { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onList: () => void; onBack: () => void }) {
   const article = entry?.article;
   const [spaceId, setSpaceId] = useState(preferredSpace);
   const space = entry && studySpace(entry, spaceId);
   return (
     <>
       <div className="page-heading">
-        <button className="text-button back-button" type="button" onClick={onBack}>
+        <div className="section-heading"><button className="text-button back-button" type="button" onClick={onBack}>
           <Icon name="back" /> {backTo === 'home' ? 'Back to Home' : 'Back to Library'}
         </button>
+          {backTo === 'home' && <button type="button" className="text-button" onClick={onList}>Library list</button>}
+        </div>
         <h1 data-page-heading tabIndex={-1}>{article?.title ?? 'Article unavailable'}</h1>
-        {article && <p>{articleHost(article.url)} Â· {article.text.length.toLocaleString()} characters saved</p>}
+        {article && <p>{articleHost(article.url)} · {article.text.length.toLocaleString()} characters saved</p>}
       </div>
       {article && entry && <>
         <section className="card" aria-labelledby="saved-reading">

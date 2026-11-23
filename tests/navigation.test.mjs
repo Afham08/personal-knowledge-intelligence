@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { articleHost, backFromArticle, destinations, filterLibrary, libraryEntries, studySpace } from '../entrypoints/sidepanel/navigation.ts';
+import { articleHost, backFromArticle, destinations, filterLibrary, homeReading, libraryEntries, routeKey, studySpace } from '../entrypoints/sidepanel/navigation.ts';
 
 const library = {
   version: 1,
@@ -53,4 +53,18 @@ test('saved study uses a linked goal even when the active space is unrelated', (
   assert.equal(studySpace(entry, 'a').learningGoal, 'Build a recall habit');
   assert.equal(studySpace(entry, 'unrelated').id, 'b');
   assert.equal(studySpace({ ...entry, memberships: [] }), undefined);
+});
+
+test('reading positions distinguish the list and each article across entry points', () => {
+  const reader = { view: 'library', articleId: '1', from: 'home' };
+  assert.equal(routeKey(reader), routeKey({ ...reader, from: 'library' }));
+  assert.notEqual(routeKey(reader), routeKey({ view: 'library' }));
+  assert.notEqual(routeKey(reader), routeKey({ ...reader, articleId: '2' }));
+});
+
+test('Home offers the open reader once even when it is older than the recent saves', () => {
+  const entries = ['1', '2', '3', '4'].map(id => ({ article: { id }, memberships: [] }));
+  assert.deepEqual(homeReading(entries, '4'), [entries[3], entries[0], entries[1]]);
+  assert.deepEqual(homeReading(entries, '1'), entries.slice(0, 3));
+  assert.deepEqual(homeReading(entries, 'missing'), entries.slice(0, 3));
 });

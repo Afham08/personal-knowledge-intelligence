@@ -7,6 +7,10 @@ export type Route =
   | { view: Destination }
   | { view: 'library'; articleId: string; from: 'home' | 'library' };
 
+export function routeKey(route: Route): string {
+  return 'articleId' in route ? 'article/' + route.articleId : route.view;
+}
+
 export function studySpace(entry: LibraryEntry, preferredId?: string) {
   return entry.memberships.find(({ space }) => space.id === preferredId)?.space ?? entry.memberships[0]?.space;
 }
@@ -37,6 +41,11 @@ export function libraryEntries(library: Library): LibraryEntry[] {
   }
 
   return [...entries.values()];
+}
+
+export function homeReading(entries: LibraryEntry[], openId?: string): LibraryEntry[] {
+  const open = entries.find(({ article }) => article.id === openId);
+  return open ? [open, ...entries.filter((entry) => entry !== open).slice(0, 2)] : entries.slice(0, 3);
 }
 
 export function articleHost(url: string): string {

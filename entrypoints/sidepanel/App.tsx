@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AiSettingsPanel, useAiSettings } from './AiSettings';
 import { GuideInSettings, WelcomeGuide } from './QuickStart';
@@ -6,7 +6,7 @@ import { CurrentArticle } from './CurrentArticle';
 import { Icon } from './Icon';
 import { KnowledgeSpaces } from './KnowledgeSpaces';
 import { ArticleRow, SavedLibrary } from './SavedLibrary';
-import { backFromArticle, destinations, libraryEntries, type Destination, type Route } from './navigation';
+import { backFromArticle, destinations, homeReading, libraryEntries, routeKey, type Destination, type Route } from './navigation';
 import { useLibrary } from './useLibrary';
 
 const labels: Record<Destination, string> = {
@@ -22,28 +22,51 @@ export default function App() {
   const [spaceId, setSpaceId] = useState<string>();
   const [libraryFilter, setLibraryFilter] = useState('');
   const main = useRef<HTMLElement>(null);
-  const previousRoute = useRef(route);
+  const positions = useRef(new Map<string, number>());
+  const focusTargets = useRef(new Map<string, { element: WeakRef<HTMLElement>; articleId?: string }>());
+  const [listVisit, setListVisit] = useState(0);
   const library = state.status === 'ready' ? state.library : undefined;
   const selected = library?.spaces.find((space) => space.id === spaceId) ?? library?.spaces[0];
   const entries = useMemo(() => library ? libraryEntries(library) : [], [library]);
 
-  useEffect(() => {
-    if (previousRoute.current === route) return;
-    previousRoute.current = route;
+  function navigate(next: Route, fresh = false) {
+    if (routeKey(route) === routeKey(next) && !fresh) return;
+    positions.current.set(routeKey(route), main.current?.scrollTop ?? 0);
+    if (fresh) {
+      positions.current.delete(routeKey(next));
+      focusTargets.current.delete(routeKey(next));
+    }
+    setRoute(next);
+  }
+
+  useLayoutEffect(() => {
     const area = main.current;
     if (!area) return;
-    area.scrollTop = 0;
-    area.querySelector<HTMLElement>('[data-view]:not([hidden]) [data-page-heading]')?.focus({ preventScroll: true });
+    const key = routeKey(route);
+    // Initial open leaves keyboard focus in the browser. Later visits restore the reading position.
+    if (!positions.current.size) return;
+    area.scrollTop = positions.current.get(key) ?? 0;
+    const bookmark = focusTargets.current.get(key);
+    const view = area.querySelector<HTMLElement>('[data-view]:not([hidden])');
+    const previous = bookmark?.element.deref();
+    const candidate = previous?.isConnected ? previous : bookmark?.articleId
+      ? view?.querySelector<HTMLElement>('[data-article-id="' + CSS.escape(bookmark.articleId) + '"]') : undefined;
+    const bounds = candidate?.getBoundingClientRect();
+    const viewport = area.getBoundingClientRect();
+    const inView = bounds && bounds.bottom > viewport.top && bounds.top < viewport.bottom;
+    const target = candidate && inView && view?.contains(candidate) && candidate.checkVisibility()
+      ? candidate : area.scrollTop ? area : view?.querySelector<HTMLElement>('[data-page-heading]');
+    target?.focus({ preventScroll: true });
   }, [route]);
 
   function openSetup(view: 'spaces' | 'settings') {
     setReturnTo(route);
-    setRoute({ view });
+    navigate({ view }, true);
   }
 
   function returnToReading() {
     if (!returnTo) return;
-    setRoute(returnTo);
+    navigate(returnTo);
     setReturnTo(undefined);
   }
 
@@ -56,14 +79,15 @@ export default function App() {
   function openArticle(articleId: string, from: 'home' | 'library') {
     const next = { view: 'library', articleId, from } as const;
     setReader(next);
-    setRoute(next);
+    navigate(next, articleId !== reader?.articleId);
   }
 
   function showSpaceArticles(id: string) {
     setReader(undefined);
     setReturnTo(undefined);
     setLibraryFilter(id);
-    setRoute({ view: 'library' });
+    setListVisit((visit) => visit + 1);
+    navigate({ view: 'library' }, true);
   }
 
   return (
@@ -73,7 +97,11 @@ export default function App() {
         <div><span className="brand-name">PKI</span><span className="brand-caption">Personal Knowledge Intelligence</span></div>
       </header>
 
-      <main ref={main} className="app-main" id="main">
+      <main ref={main} tabIndex={-1} onFocusCapture={(event) => {
+        if (event.target !== main.current) focusTargets.current.set(routeKey(route), {
+          element: new WeakRef(event.target), articleId: event.target.dataset.articleId,
+        });
+      }} className="app-main" id="main">
         {state.status === 'loading' && <p role="status">Loading your local library…</p>}
         {state.status === 'error' && <p role="alert">Your library couldn’t load. Close and reopen PKI to try again.</p>}
         <div data-view="home" hidden={route.view !== 'home'} className="page">
@@ -93,22 +121,23 @@ export default function App() {
           {library && <>
             <section className="card" aria-labelledby="recent-heading">
               <div className="section-heading">
-                <h2 id="recent-heading">Recently saved</h2>
-                <button className="text-button" type="button" onClick={() => {
+                <h2 id="recent-heading">{reader ? 'Continue learning' : 'Recently saved'}</h2>
+                {entries.length > 0 && <button className="text-button" type="button" onClick={() => {
                   setReader(undefined);
                   setLibraryFilter('');
-                  setRoute({ view: 'library' });
-                }}>Open library <Icon name="arrow" /></button>
+                  setListVisit((visit) => visit + 1);
+                  navigate({ view: 'library' }, true);
+                }}>Open library <Icon name="arrow" /></button>}
               </div>
-              {entries.length > 0 && <p className="metadata">Open an article to continue reading or practice recall.</p>}
-              {entries.length ? <ul className="row-list">{entries.slice(0, 3).map((entry) => (
-                <li key={entry.article.id}><ArticleRow entry={entry} onOpen={() => openArticle(entry.article.id, 'home')} /></li>
-              ))}</ul> : <p className="empty-copy">Articles you save to a Knowledge Space will appear here.</p>}
+              {entries.length > 0 && <p className="metadata">{reader ? 'Resume your open article or choose a recent save.' : 'Open a saved article to read or practice recall.'}</p>}
+              {entries.length ? <ul className="row-list">{homeReading(entries, reader?.articleId).map((entry) => (
+                <li key={entry.article.id}><ArticleRow entry={entry} resume={entry.article.id === reader?.articleId} onOpen={() => openArticle(entry.article.id, 'home')} /></li>
+              ))}</ul> : <p className="empty-copy">Capture a page above and save it to a space. Reopen it here to read or practice.</p>}
             </section>
             <section className="card" aria-labelledby="home-spaces">
               <div className="section-heading">
                 <h2 id="home-spaces">Knowledge Spaces</h2>
-                <button className="text-button" type="button" onClick={() => setRoute({ view: 'spaces' })}>
+                <button className="text-button" type="button" onClick={() => navigate({ view: 'spaces' }, true)}>
                   {library.spaces.length ? 'Manage spaces' : 'Create a space'} <Icon name="arrow" />
                 </button>
               </div>
@@ -116,11 +145,11 @@ export default function App() {
                 <li key={space.id}>
                   <button className="list-row" type="button" onClick={() => {
                     setSpaceId(space.id);
-                    setRoute({ view: 'spaces' });
+                    navigate({ view: 'spaces' }, true);
                   }}>
                     <span className="row-icon"><Icon name="spaces" /></span>
                     <span className="row-copy"><strong>{space.name}</strong>
-                      <small>{space.id === selected?.id ? 'Active for analysis' : 'Open space'}</small></span>
+                      <small>{space.id === selected?.id ? 'Selected space' : 'Open space'}</small></span>
                     <Icon name="arrow" />
                   </button>
                 </li>
@@ -137,11 +166,12 @@ export default function App() {
         </div>
 
         <div data-view="library" hidden={route.view !== 'library'} className="page">
-          {library && <SavedLibrary entries={entries} spaces={library.spaces} spaceFilter={libraryFilter}
+          {library && <SavedLibrary key={listVisit} entries={entries} spaces={library.spaces} spaceFilter={libraryFilter}
             onFilter={setLibraryFilter} route={reader ?? route} ai={ai.status === 'ready' ? ai.settings : undefined}
             preferredSpace={reader?.from === 'library' && libraryFilter ? libraryFilter : selected?.id} onSettings={() => openSetup('settings')}
             onSpaces={(id) => { setSpaceId(id); openSetup('spaces'); }} onOpen={(id) => openArticle(id, 'library')}
-            onBack={() => { setReader(undefined); setRoute(backFromArticle(route)); }} />}
+            onList={() => { setReader(undefined); navigate({ view: 'library' }); }}
+            onBack={() => { setReader(undefined); navigate(backFromArticle(route)); }} />}
           {!library && <div className="page-heading"><h1 data-page-heading tabIndex={-1}>Library</h1></div>}
         </div>
 
@@ -163,11 +193,9 @@ export default function App() {
         {destinations.map((view) => (
           <button key={view} type="button" aria-current={route.view === view ? 'page' : undefined}
             aria-label={view === 'spaces' ? 'Knowledge Spaces' : undefined} onClick={() => {
+              if (view === route.view) return;
               setReturnTo(undefined);
-              if (view === 'library' && route.view === 'library') {
-                setReader(undefined);
-                setRoute({ view });
-              } else setRoute(view === 'library' && reader ? reader : { view });
+              navigate(view === 'library' && reader ? reader : { view });
             }}>
             <span className="nav-icon"><Icon name={view} /></span><span>{labels[view]}</span>
           </button>

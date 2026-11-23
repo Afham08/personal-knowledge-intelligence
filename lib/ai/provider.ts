@@ -2,7 +2,7 @@ export type Passage = { id: string; text: string };
 export type AnalysisInput = { title: string; goal: string; passages: Passage[] };
 export type AiModel = { name: string; revision: string };
 
-export type AnalysisRetry = 'evidence' | 'format';
+export type AnalysisRetry = 'evidence' | 'format' | 'truncated';
 
 export interface AiProvider {
   id: string;
@@ -10,7 +10,7 @@ export interface AiProvider {
   generate(model: AiModel, input: AnalysisInput, signal: AbortSignal, retry?: AnalysisRetry): Promise<unknown>;
 }
 
-type AiErrorCode = 'connection' | 'timeout' | 'cancelled' | 'model' | 'invalid' | 'evidence' | 'busy' | 'permission';
+type AiErrorCode = 'connection' | 'timeout' | 'cancelled' | 'model' | 'invalid' | 'json' | 'truncated' | 'evidence' | 'busy' | 'permission';
 
 export class AiError extends Error {
   readonly code: AiErrorCode;

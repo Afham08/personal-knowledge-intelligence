@@ -72,6 +72,8 @@ test('makes a structured single generation call without the article URL or crede
       const body = JSON.parse(options.body);
       assert.equal(body.stream, false);
       assert.equal(body.format.additionalProperties, false);
+      assert.equal(body.format.properties.concepts.maxItems, 2);
+      assert.equal(body.format.properties.recall.maxItems, 3);
       assert.deepEqual(body.format.properties.recall.items.properties.evidence.enum, ['P1']);
       assert.deepEqual(body.format.properties.relevance.properties.evidence.items.enum, ['P1']);
       assert.equal(body.tools, undefined);
@@ -84,14 +86,15 @@ test('makes a structured single generation call without the article URL or crede
 
 test('rejects malformed JSON envelopes, malformed model JSON, and incomplete output', async () => {
   const fixtures = [
-    () => new Response('<html>invalid JSON</html>'),
-    () => response({ done: true, message: { content: 'invalid JSON' } }),
-    () => response({ ...ollamaReply(result), done_reason: 'length' }),
-    () => response({ ...ollamaReply(result), remote_host: 'https://ollama.com' }),
+    [() => new Response('<html>invalid JSON</html>'), 'json'],
+    [() => response({ done: true, message: { content: 'invalid JSON' } }), 'json'],
+    [() => response({ ...ollamaReply(result), done_reason: 'length' }), 'truncated'],
+    [() => response({ ...ollamaReply(result), done: false }), 'truncated'],
+    [() => response({ ...ollamaReply(result), remote_host: 'https://ollama.com' }), 'model'],
   ];
-  for (const fetcher of fixtures) {
+  for (const [fetcher, code] of fixtures) {
     const provider = createOllamaProvider({ fetcher });
-    await assert.rejects(provider.generate(model, input, new AbortController().signal), { code: 'invalid' });
+    await assert.rejects(provider.generate(model, input, new AbortController().signal), { code });
   }
 });
 
@@ -165,6 +168,45 @@ function harness() {
     },
   };
 }
+
+test('Qwen3 retries a reasoning-only length stop with more room and validates only final content', async () => {
+  const args = harness();
+  const requests = [];
+  args.modelName = 'qwen3:4b';
+  args.provider = createOllamaProvider({ fetcher: async (url, options) => {
+    if (url.endsWith('/tags')) return response({ models: [{ name: args.modelName, size: 1, digest: 'fixture' }] });
+    requests.push(JSON.parse(options.body));
+    if (requests.length === 1) {
+      return response({ done: true, done_reason: 'length', message: { thinking: JSON.stringify(result), content: '' } });
+    }
+    return response({ ...ollamaReply(result), message: { thinking: 'Not answer JSON.', content: JSON.stringify(result) } });
+  } });
+  assert.deepEqual((await analyzeArticle(args)).analysis, result);
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(body => body.think === false && body.format.type === 'object'));
+  assert.ok(requests[1].options.num_predict > requests[0].options.num_predict);
+  assert.equal(args.entries.size, 1);
+});
+
+test('exhausted analysis preserves the final diagnostic and does not cache partial output', async () => {
+  for (const [reply, code, detail] of [
+    [{ done: true, message: { content: '{' } }, 'json', /malformed JSON/],
+    [ollamaReply({}), 'invalid', /schema/],
+    [{ ...ollamaReply(result), done_reason: 'length' }, 'truncated', /token limit/],
+    [{ done: true, message: { thinking: JSON.stringify(result), content: '' } }, 'invalid', /no final answer/],
+  ]) {
+    const args = harness();
+    let calls = 0;
+    args.provider = createOllamaProvider({ fetcher: async url => {
+      if (url.endsWith('/tags')) return response({ models: [{ name: model.name, size: 1, digest: 'fixture' }] });
+      calls++;
+      return response(reply);
+    } });
+    await assert.rejects(analyzeArticle(args), { code, message: detail });
+    assert.equal(calls, 2);
+    assert.equal(args.entries.size, 0);
+  }
+});
 
 test('reuses validated results and misses when article, goal, model, or provider changes', async () => {
   const args = harness();
@@ -261,7 +303,7 @@ test('stops after the retry and explains persistent reference errors without cac
     attempts.push(retry);
     return { ...result, relevance: { ...result.relevance, evidence: ['P8'] } };
   };
-  await assert.rejects(analyzeArticle(args), { code: 'evidence', message: /source references after two attempts/ });
+  await assert.rejects(analyzeArticle(args), { code: 'evidence', message: /after two attempts.*passage/i });
   assert.deepEqual(attempts, [undefined, 'evidence']);
   assert.equal(args.entries.size, 0);
 });

@@ -3,7 +3,7 @@ import { AiError, checkCancelled, type AiProvider, type AnalysisInput, type Anal
 import { validateAnalysis, type Analysis } from './schema.ts';
 
 // Bump when the prompt, input selection, generation settings, or response schema changes.
-const ANALYSIS_VERSION = 3;
+const ANALYSIS_VERSION = 4;
 const MAX_PASSAGES = 8;
 const LEAD_PASSAGES = 2;
 const PASSAGE_LENGTH = 400;
@@ -111,7 +111,8 @@ async function cacheKey(value: unknown): Promise<string> {
 function retryReason(error: unknown): AnalysisRetry | undefined {
   if (!(error instanceof AiError)) return undefined;
   if (error.code === 'evidence') return 'evidence';
-  if (error.code === 'invalid') return 'format';
+  if (error.code === 'truncated') return 'truncated';
+  if (error.code === 'invalid' || error.code === 'json') return 'format';
   return undefined;
 }
 
@@ -164,11 +165,8 @@ export async function analyzeArticle({
       analysis = await generate(reason);
     } catch (retryError) {
       checkCancelled(signal);
-      const failure = retryReason(retryError);
-      if (!failure) throw retryError;
-      const problem = failure === 'evidence' ? 'valid source references' : 'a valid structured analysis';
-      throw new AiError(failure === 'evidence' ? 'evidence' : 'invalid',
-        'Ollama could not produce ' + problem + ' after two attempts. Try a shorter article or a different installed model.');
+      if (!(retryError instanceof AiError) || !retryReason(retryError)) throw retryError;
+      throw new AiError(retryError.code, 'Analysis failed after two attempts. ' + retryError.message);
     }
   }
 

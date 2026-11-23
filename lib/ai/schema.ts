@@ -32,6 +32,7 @@ export function object(properties: Record<string, Schema>): Schema {
 }
 
 export function createAnalysisSchema(passageIds?: readonly string[]) {
+  // Constrain new generations to the requested counts. The reader also accepts previously saved results.
   const evidence: Schema = passageIds ? { type: 'string', enum: passageIds } : text(12);
   return object({
     relevance: object({
@@ -43,11 +44,11 @@ export function createAnalysisSchema(passageIds?: readonly string[]) {
     }),
     summary: object({
       overview: text(600),
-      ideas: list(text(200), 1, 4),
-      takeaways: list(text(200), 1, 4),
+      ideas: list(text(200), 1, passageIds ? 2 : 4),
+      takeaways: list(text(200), 1, passageIds ? 2 : 4),
     }),
-    concepts: list(object({ term: text(90), explanation: text(240), evidence }), 1, 5),
-    recall: list(object({ question: text(200), answer: text(240), evidence }), 3, 5),
+    concepts: list(object({ term: text(90), explanation: text(240), evidence }), 1, passageIds ? 2 : 5),
+    recall: list(object({ question: text(200), answer: text(240), evidence }), 3, passageIds ? 3 : 5),
   });
 }
 
@@ -70,7 +71,7 @@ export function matchesSchema(value: unknown, schema: Schema): boolean {
 
 export function validateAnalysis(value: unknown, passages: Passage[]): Analysis {
   if (!matchesSchema(value, responseShape)) {
-    throw new AiError('invalid', 'The model returned an invalid analysis.');
+    throw new AiError('invalid', 'The JSON did not match the required article analysis schema.');
   }
 
   const analysis = value as Analysis;

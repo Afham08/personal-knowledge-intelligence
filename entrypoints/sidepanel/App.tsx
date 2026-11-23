@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AiSettingsPanel, useAiSettings } from './AiSettings';
+import { GuideInSettings, WelcomeGuide } from './QuickStart';
 import { CurrentArticle } from './CurrentArticle';
 import { Icon } from './Icon';
 import { KnowledgeSpaces } from './KnowledgeSpaces';
@@ -84,6 +85,11 @@ export default function App() {
             ai={ai.status === 'ready' ? ai.settings : undefined}
             onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
+          <WelcomeGuide onDismiss={() => {
+            const home = main.current?.querySelector<HTMLElement>('[data-view="home"]:not([hidden])');
+            home?.querySelector<HTMLElement>('[data-page-heading]')?.focus();
+          }} />
+
           {library && <>
             <section className="card" aria-labelledby="recent-heading">
               <div className="section-heading">
@@ -142,6 +148,7 @@ export default function App() {
         <div data-view="settings" hidden={route.view !== 'settings'} className="page">
           <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Settings</h1>
             <p>Manage local AI and see what PKI stores.</p></div>
+          <GuideInSettings />
           <AiSettingsPanel state={ai} />
           <section className="card" aria-labelledby="privacy-heading">
             <div className="card-heading"><span className="row-icon"><Icon name="shield" /></span>

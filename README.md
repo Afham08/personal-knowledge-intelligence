@@ -15,7 +15,9 @@ npm.cmd run build
 
 Open `brave://extensions` and enable **Developer mode**. Click **Load unpacked** and choose the project's `.output\chrome-mv3` directory. Click **Reload** on PKI's card after rebuilding. In Chrome, use `chrome://extensions`.
 
-Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. **Home** captures and analyzes the current page. **Spaces** manages learning goals, **Library** searches saved articles and edits notes, and **Settings** manages Ollama. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Extract article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
+Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. **Home** captures and analyzes the current page. **Spaces** manages learning goals, **Library** searches saved articles and edits notes, and **Settings** manages Ollama. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Capture article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
+
+On first use, choose **Show quick start** on Home for a short guide, or **Skip guide** to get straight to reading. **Finish guide** and **Skip guide** remember your choice in this browser profile. Reopen the steps anytime under **Settings → Quick start guide**.
 
 ## Optional Ollama setup in Brave
 
@@ -35,7 +37,7 @@ Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. **Ho
 ## Test the analysis workflow
 
 1. Open a public article, click PKI's toolbar icon, and choose a Knowledge Space with a learning goal.
-2. Click **Extract article**, choose **Save to Knowledge Space**, and click **Save article**. Analyze the capture immediately or open it later from **Recently saved** or **Library**. For a saved article shared across spaces, choose the study space. Click **Analyze with AI**. Use **Read extracted text** to inspect what PKI extracted. Open **View passages sent to Ollama** to see the input and compare the character and passage counts. A **Source reference** links a particular claim to an excerpt for you to check.
+2. Click **Capture article**, choose **Save to Knowledge Space**, and click **Save article**. Analyze the capture immediately or open it later from **Recently saved** or **Library**. For a saved article shared across spaces, choose the study space. Click **Analyze with AI**. Use **Read extracted text** to inspect what PKI extracted. Open **View passages sent to Ollama** to see the input and compare the character and passage counts. A **Source reference** links a particular claim to an excerpt for you to check.
 3. In **Active recall**, write an answer and click **Check my answer**. Read the qualitative feedback, any missing or inaccurate ideas, and one suggestion. Expand the referenced sentence before deciding whether you agree. **Reveal expected answer** remains available independently.
 4. Click **Next question**, type a draft, then navigate back and forth. Both drafts should remain available during this practice session. Try **Cancel answer check** on a fresh check and confirm the draft remains editable.
 5. Click **Analyze again** with the same article, model, and goal and check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.

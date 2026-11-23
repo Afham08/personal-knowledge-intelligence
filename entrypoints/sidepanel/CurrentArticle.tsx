@@ -75,7 +75,7 @@ function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onS
             <button className="text-button" type="button" disabled={tab.loading} onClick={() => void extract()}>Extract again</button>
             {space && <SaveArticle key={space.id} article={state.article} space={space} spaces={spaces} onSelect={onSelect} />}
             {libraryReady && !space && (
-              <button type="button" onClick={onSpaces}>Create a space to save this article</button>
+              <button className="button-primary" type="button" onClick={onSpaces}>Create a space to save this article</button>
             )}
             {ai && !ai.enabled && (
               <button className="text-button" type="button" onClick={onSettings}>Set up local AI <Icon name="arrow" /></button>
@@ -83,7 +83,7 @@ function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onS
           </>
         ) : (
           <button className="button-primary" type="button" disabled={tab.loading || state.status === 'loading'}
-            onClick={() => void extract()}>{state.status === 'loading' ? 'Extracting…' : 'Extract article'} <Icon name="arrow" /></button>
+            onClick={() => void extract()}>{state.status === 'loading' ? 'Extracting…' : 'Capture article'} <Icon name="arrow" /></button>
         )}
         {tab.loading && <p role="status">Waiting for the page to finish loading…</p>}
         {state.status === 'loading' && <p role="status">Reading the current page…</p>}

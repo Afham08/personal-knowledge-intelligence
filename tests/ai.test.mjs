@@ -142,6 +142,7 @@ test('strictly validates shape, answer count, relevance category, and evidence',
     { ...result, recall: result.recall.slice(0, 2) },
     { ...result, relevance: { ...result.relevance, level: 99 } },
     { ...result, recall: [result.recall[0], result.recall[0], result.recall[2]] },
+    { ...result, recall: result.recall.map((item, i) => ({ ...item, answer: i ? 'Review the material.' : 'Review   the material' })) },
     { ...result, concepts: [{ ...result.concepts[0], evidence: { passageId: 'P1', quote: 'A fabricated quote.' } }] },
     { ...result, recall: result.recall.map((item) => ({ ...item, quote: 'A fabricated quote.' })) },
   ]) {
@@ -327,6 +328,18 @@ test('never retries a timeout or starts a retry after cancellation', async () =>
   }), { code: 'cancelled' });
   assert.equal(calls, 2);
   assert.equal(args.entries.size, 0);
+});
+
+test('repairs a review set with three identical answers before caching it', async () => {
+  const args = harness();
+  const attempts = [];
+  args.provider.generate = async (_model, _input, _signal, retry) => {
+    attempts.push(retry);
+    return retry ? result : { ...result, recall: result.recall.map(item => ({ ...item, answer: 'Review again.' })) };
+  };
+  assert.deepEqual((await analyzeArticle(args)).analysis.recall, result.recall);
+  assert.deepEqual(attempts, [undefined, 'format']);
+  assert.equal((await analyzeArticle(args)).cached, true);
 });
 
 test('prefers goal-related prose within long article sections without using the entire input budget for the lead', () => {

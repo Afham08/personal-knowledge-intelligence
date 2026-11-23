@@ -90,6 +90,10 @@ export function validateAnalysis(value: unknown, passages: Passage[]): Analysis 
   if (new Set(questions).size !== questions.length) {
     throw new AiError('invalid', 'The model repeated recall questions.');
   }
+  const answers = analysis.recall.map(({ answer }) => answer.trim().replace(/\s+/gu, ' ').replace(/[.!?]+$/u, ''));
+  if (new Set(answers).size === 1) {
+    throw new AiError('invalid', 'All recall questions had the same answer.');
+  }
 
   return {
     relevance: { ...analysis.relevance, evidence: analysis.relevance.evidence.map(reference) },

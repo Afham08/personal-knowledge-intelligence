@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { markTabLoading, recallSessionKey, tabSnapshot, updateAnalysis } from '../entrypoints/sidepanel/panel-state.ts';
+import { markTabLoading, recallSessionKey, summaryPoints, tabSnapshot, updateAnalysis } from '../entrypoints/sidepanel/panel-state.ts';
 
 test('a replacement analysis preserves the previous result through loading, retry, failure and cancellation', () => {
   const previous = { analysis: { recall: [{ question: 'What was the main point?' }] } };
@@ -39,4 +39,10 @@ test('a cached round trip preserves the recall session even when storage reorder
   const cached = { answer: 'Practice.', evidence: 'P1', question: 'What helps recall?' };
   assert.equal(recallSessionKey([question]), recallSessionKey([cached]));
   assert.notEqual(recallSessionKey([question]), recallSessionKey([{ ...cached, evidence: 'P2' }]));
+});
+
+test('summary display omits repeated sentences but retains meaningful numbers and case distinctions', () => {
+  const summary = { overview: 'Cells divide.', ideas: ['Cells  divide', 'Use pH 7.'], takeaways: ['Use pH 7!', 'Use pH 8.', 'Use PH 7.'] };
+  assert.deepEqual(summaryPoints(summary), { ideas: ['Use pH 7.'], takeaways: ['Use pH 8.', 'Use PH 7.'] });
+  assert.equal(summary.takeaways.length, 3);
 });

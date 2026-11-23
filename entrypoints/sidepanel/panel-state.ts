@@ -27,6 +27,21 @@ export function markTabLoading(state: TabState, tabId: number): TabState {
   return { ...state, tab: { ...state.tab, loading: true }, documentVersion: state.documentVersion + 1 };
 }
 
+// Suppress repeated list entries for display without altering the validated, cached analysis.
+export function summaryPoints(summary: AnalysisResult['analysis']['summary']) {
+  const normalize = (text: string) => text.trim().replace(/\s+/gu, ' ').replace(/[.!?]+$/u, '');
+  const seen = new Set([normalize(summary.overview)]);
+  function unique(items: string[]) {
+    return items.filter((item) => {
+      const key = normalize(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  return { ideas: unique(summary.ideas), takeaways: unique(summary.takeaways) };
+}
+
 export function recallSessionKey(questions: AnalysisResult['analysis']['recall']): string {
   return JSON.stringify(questions.map(({ question, answer, evidence }) => [question, answer, evidence]));
 }

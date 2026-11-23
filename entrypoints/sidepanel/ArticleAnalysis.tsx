@@ -8,7 +8,7 @@ import { AiError } from '../../lib/ai/provider';
 import { Icon } from './Icon';
 import { RecallPractice } from './RecallPractice';
 import { SourceReference } from './SourceReference';
-import { recallSessionKey, updateAnalysis, type AnalysisResult } from './panel-state';
+import { recallSessionKey, summaryPoints, updateAnalysis, type AnalysisResult } from './panel-state';
 import type { ExtractedArticle } from '../../lib/article';
 
 export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings }: {
@@ -103,6 +103,7 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
   const id = useId();
   const practice = useRef<HTMLDivElement>(null);
   const { relevance, summary, concepts, recall } = analysis;
+  const { ideas, takeaways } = summaryPoints(summary);
   const sourceById = new Map(passages.map((passage) => [passage.id, passage]));
   return (
     <>
@@ -114,6 +115,19 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
           heading?.scrollIntoView({ block: 'start' });
         }}>Go to recall <Icon name="arrow" /></button>
       </div>
+      <section className="analysis-block" aria-labelledby={id + '-summary'}>
+        <h3 id={id + '-summary'}>Summary</h3>
+        <p>{summary.overview}</p>
+        {partial && <p className="metadata">Based on {passages.length} selected excerpts from the extracted text.</p>}
+        {(ideas.length > 0 || takeaways.length > 0) && <details className="disclosure">
+          <summary>Main ideas and takeaways</summary>
+          <div className="analysis-section-content">
+            {ideas.length > 0 && <><h4>Main ideas</h4><TextList items={ideas} /></>}
+            {takeaways.length > 0 && <><h4>Takeaways</h4><TextList items={takeaways} /></>}
+          </div>
+        </details>}
+      </section>
+
       <section className="analysis-block" aria-labelledby={id + '-relevance'}>
         <div className="section-heading"><h3 id={id + '-relevance'}>Relevance</h3>
           <span className="badge" data-tone={relevance.level === 'High' ? 'positive' : relevance.level === 'Medium' ? 'partial' : undefined}>
@@ -122,19 +136,7 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         <p>{relevance.alignment}</p>
         {relevance.topics.length > 0 && <p className="metadata"><strong>Topics</strong> {relevance.topics.join(' · ')}</p>}
         {relevance.limitations.length > 0 && <><h4>Limitations</h4><TextList items={relevance.limitations} /></>}
-        <div>{relevance.evidence.map((evidence, index) => <SourceReference key={index} passage={sourceById.get(evidence)} />)}</div>
-      </section>
-
-      <section className="analysis-block" aria-labelledby={id + '-summary'}>
-        <h3 id={id + '-summary'}>Summary</h3>
-        <p>{summary.overview}</p>
-        <details className="disclosure">
-          <summary>Main ideas and takeaways</summary>
-          <div className="analysis-section-content">
-            <h4>Main ideas</h4><TextList items={summary.ideas} />
-            <h4>Takeaways</h4><TextList items={summary.takeaways} />
-          </div>
-        </details>
+        <div>{[...new Set(relevance.evidence)].map((evidence) => <SourceReference key={evidence} passage={sourceById.get(evidence)} />)}</div>
       </section>
 
       <details className="disclosure">

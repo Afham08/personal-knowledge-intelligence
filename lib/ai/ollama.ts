@@ -160,7 +160,7 @@ export function createOllamaProvider({
       if (CLOUD_NAME.test(model.name)) throw new AiError('model', 'Select an installed local model.');
       const correction = retry === 'evidence'
         ? ' Use an exact supplied ID for every concept and answer. Choose claims supported by that passage.'
-        : ' Match the schema exactly. Return three distinct recall questions and keep each field short.';
+        : ' Match the schema exactly. Ask about different supported details or relationships so the three questions have distinct answers. Keep each field short.';
       const systemPrompt = retry ? SYSTEM_PROMPT + correction : SYSTEM_PROMPT;
       return chat(model.name, systemPrompt, input, createAnalysisSchema(input.passages.map(({ id }) => id)),
         signal, { think: false, context: 8192, output: retry === 'truncated' ? 3072 : 2304, timeout: analysisTimeout });
@@ -170,7 +170,7 @@ export function createOllamaProvider({
       try {
         // Refuse cloud-backed aliases at Ollama itself. Older servers can fail closed on this suffix.
         return await chat(model.name + ':local', RECALL_PROMPT, input, createRecallSchema(input.source, input.learnerAnswer),
-          signal, { context: 4096, output: 512, timeout: recallTimeout });
+          signal, { think: false, context: 4096, output: 512, timeout: recallTimeout });
       } catch (error) {
         if (error instanceof AiError && error.code === 'model') {
           throw new AiError('model', 'Ollama could not run this model in local-only mode. Check the installed model and update Ollama if needed.');

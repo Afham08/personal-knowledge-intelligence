@@ -26,6 +26,7 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
 }) {
   const [index, setIndex] = useState(0);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
+  const input = useRef<HTMLTextAreaElement>(null);
   const request = useRef<AbortController>(undefined);
   useEffect(() => () => {
     request.current?.abort();
@@ -39,6 +40,8 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
   const answerDraft = useDraft('recall', context, question?.question ?? '', question?.answer ?? '', passage?.text ?? '');
   const answer = answerDraft.value ?? '';
   if (!question) return null;
+
+  const checked = draft.check.status === 'ready' && draft.check.answer === answer;
 
   function update(changes: Partial<Draft>) {
     setDrafts((current) => ({
@@ -57,10 +60,11 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
   function navigate(next: number) {
     cancel();
     setIndex(next);
+    requestAnimationFrame(() => input.current?.focus());
   }
 
   async function check() {
-    if (request.current || analysisPending || !question || !answer.trim()) return;
+    if (checked || request.current || analysisPending || !question || !answer.trim()) return;
     const controller = new AbortController();
     request.current = controller;
     update({ check: { status: 'checking' } });
@@ -99,20 +103,20 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
       <progress value={index + 1} max={questions.length} aria-label="Recall progress" />
       <label>
         {question.question}
-        <textarea value={answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
+        <textarea ref={input} value={answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
           disabled={checking} onChange={(event) => {
             answerDraft.edit(event.target.value);
             update({ check: { status: 'idle' } });
           }} />
       </label>
       <div className="button-row">
-        <button className="button-primary" type="button" disabled={checking || analysisPending || !answer.trim()} onClick={() => void check()}>
-          Check my answer
+        <button className="button-primary" type="button" disabled={checked || checking || analysisPending || !answer.trim()} onClick={() => void check()}>
+          {checked ? 'Answer checked' : 'Check my answer'}
         </button>
         {checking && <button type="button" onClick={cancel}>Cancel answer check</button>}
       </div>
       <p className="metadata">{analysisPending ? 'You can check answers when the article analysis finishes.'
-        : 'Answer checks use local Ollama and provide formative feedback.'}</p>
+        : checked ? 'Edit your answer to check a revision.' : 'Check your reasoning against the passage with local Ollama.'}</p>
       {checking && <p role="status">Checking your answer…</p>}
       {draft.check.status === 'cancelled' && <p role="status">Answer check cancelled. Your draft is still here.</p>}
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}

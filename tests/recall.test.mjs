@@ -128,6 +128,7 @@ test('uses Ollama local-only routing and a separate schema with no tools or remo
     const body = JSON.parse(request.body);
     assert.equal(body.model, model.name + ':local');
     assert.equal(body.tools, undefined);
+    assert.equal(body.think, false);
     assert.equal(body.format.additionalProperties, false);
     assert.deepEqual(body.format.properties.sourceId.enum, ['S1', 'S2']);
     assert.deepEqual(body.format.properties.learnerQuote.enum, [learnerAnswer]);
@@ -173,6 +174,12 @@ test('uses a conservative verdict when the feedback itself reports insufficient 
   assert.equal(feedback.verdict, 'Unable to Assess');
   assert.match(feedback.issues, /no duration/);
   assert.match(feedback.improvement, /example/);
+});
+
+test('withholds an incorrect verdict when the evaluator says the claim cannot be verified', () => {
+  const feedback = validateRecallFeedback({ ...incorrect, issues: 'The claim cannot be verified by the source.' },
+    [{ id: 'S1', text: passage.text }], 'It means rereading the text.');
+  assert.equal(feedback.verdict, 'Unable to Assess');
 });
 
 test('preserves the grounded explanation when the model omits the dedicated feedback summary', () => {

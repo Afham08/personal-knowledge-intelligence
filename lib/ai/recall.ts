@@ -83,7 +83,7 @@ export function validateRecallFeedback(value: unknown, source: Passage[], learne
   const reportsInsufficientSource =
     /\b(?:not|cannot be) (?:directly |explicitly )?(?:verified|confirmed|supported) (?:by|in|from) (?:the )?(?:source|passage|excerpt)\b/i
       .test(response.explanation + ' ' + response.issues);
-  const verdict = reportsInsufficientSource && response.verdict !== 'Incorrect' ? 'Unable to Assess' : response.verdict;
+  const verdict = reportsInsufficientSource ? 'Unable to Assess' : response.verdict;
   const understood = verdict === 'Incorrect' ? '' : parseOptionalText(response.understood);
   const issues = parseOptionalText(response.issues);
   if (verdict === 'Correct' && issues) {

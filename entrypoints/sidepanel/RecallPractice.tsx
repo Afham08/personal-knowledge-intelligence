@@ -88,48 +88,54 @@ export function RecallPractice({ questions, sourceById, modelName, analysisPendi
 
   const checking = draft.check.status === 'checking';
   return (
-    <section aria-labelledby="active-recall">
-      <h4 id="active-recall">Active recall</h4>
-      <p aria-live="polite">Question {index + 1} of {questions.length}</p>
+    <section className="practice-card" aria-labelledby="active-recall">
+      <div className="section-heading"><h3 id="active-recall">Active recall</h3>
+        <p className="metadata" aria-live="polite">Question {index + 1} of {questions.length}</p></div>
+      <progress value={index + 1} max={questions.length} aria-label="Recall progress" />
       <label>
         {question.question}
         <textarea value={draft.answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
           disabled={checking} onChange={(event) => update({ answer: event.target.value, check: { status: 'idle' } })} />
       </label>
-      <div className="ai-actions">
-        <button type="button" disabled={checking || analysisPending || !draft.answer.trim()} onClick={() => void check()}>
+      <div className="button-row">
+        <button className="button-primary" type="button" disabled={checking || analysisPending || !draft.answer.trim()} onClick={() => void check()}>
           Check my answer
         </button>
         {checking && <button type="button" onClick={cancel}>Cancel answer check</button>}
       </div>
-      <p>{analysisPending ? 'You can check answers when the article analysis finishes.'
+      <p className="metadata">{analysisPending ? 'You can check answers when the article analysis finishes.'
         : 'Answer checks use local Ollama and provide formative feedback.'}</p>
       {checking && <p role="status">Checking your answer…</p>}
       {draft.check.status === 'cancelled' && <p role="status">Answer check cancelled. Your draft is still here.</p>}
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}
       {draft.check.status === 'ready' && <Feedback result={draft.check.result} />}
-      <div className="ai-actions">
-        <button type="button" aria-expanded={draft.revealed} onClick={() => update({ revealed: !draft.revealed })}>
-          {draft.revealed ? 'Hide expected answer' : 'Reveal expected answer'}
-        </button>
+      <div><button className="text-button" type="button" aria-expanded={draft.revealed}
+        onClick={() => update({ revealed: !draft.revealed })}>
+        {draft.revealed ? 'Hide expected answer' : 'Reveal expected answer'}
+      </button></div>
+      {draft.revealed && <><p><strong>Expected answer</strong> {question.answer}</p><SourceReference passage={passage} /></>}
+      <div className="practice-nav">
         <button type="button" disabled={index === 0} onClick={() => navigate(index - 1)}>Previous question</button>
         <button type="button" disabled={index === questions.length - 1} onClick={() => navigate(index + 1)}>Next question</button>
       </div>
-      {draft.revealed && <><p><strong>Expected answer</strong> {question.answer}</p><SourceReference passage={passage} /></>}
     </section>
   );
 }
 
 function Feedback({ result: feedback }: { result: CheckResult }) {
   return (
-    <section aria-label="Answer feedback">
-      <h5 aria-live="polite">AI feedback · {feedback.verdict}</h5>
+    <section className="feedback-card" aria-label="Answer feedback">
+      <div className="section-heading"><h4>Answer feedback</h4>
+        <span className="badge" aria-live="polite" data-tone={feedback.verdict === 'Correct' ? 'positive'
+          : feedback.verdict === 'Partially Correct' ? 'partial' : feedback.verdict === 'Incorrect' ? 'negative' : undefined}>
+          {feedback.verdict}
+        </span></div>
       {feedback.explanation !== feedback.understood && feedback.explanation !== feedback.issues && <p>{feedback.explanation}</p>}
       {feedback.understood && <p><strong>What you understood</strong> {feedback.understood}</p>}
       {feedback.issues && <p><strong>Missing, inaccurate, or unsupported ideas</strong> {feedback.issues}</p>}
       <p><strong>Try this</strong> {feedback.improvement}</p>
       {feedback.evidence && (
-        <details>
+        <details className="source-reference">
           <summary>Sentence referenced by the feedback</summary>
           <p>{feedback.evidence.text}</p>
         </details>

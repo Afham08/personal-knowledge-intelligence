@@ -10,10 +10,12 @@ import { SourceReference } from './SourceReference';
 import { recallSessionKey, updateAnalysis, type AnalysisResult } from './panel-state';
 import type { ExtractedArticle } from '../../lib/article';
 
-export function ArticleAnalysis({ article, goal, modelName }: {
+export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings }: {
   article: ExtractedArticle;
   goal: string;
   modelName: string;
+  onSpaces: () => void;
+  onSettings: () => void;
 }) {
   const [state, setState] = useReducer(updateAnalysis, { status: 'idle' });
   const request = useRef<AbortController>(undefined);
@@ -57,10 +59,12 @@ export function ArticleAnalysis({ article, goal, modelName }: {
   }
 
   return (
-    <section aria-label="AI article analysis">
-      <h3>AI article analysis</h3>
-      {!goal.trim() && <p>Add a learning goal to the selected Knowledge Space to analyze this article.</p>}
-      {!modelName && <p>Choose an installed model in AI settings.</p>}
+    <section className="card analysis-card" aria-label="AI article analysis">
+      <h2>Article analysis</h2>
+      {!goal.trim() && <p>Add a learning goal to guide this analysis. <button className="text-button"
+        type="button" onClick={onSpaces}>Open Spaces</button></p>}
+      {!modelName && <p>Choose an installed model to begin. <button className="text-button"
+        type="button" onClick={onSettings}>Open Settings</button></p>}
       {analyzing ? (
         <>
           <p role="status">{state.status === 'retrying'
@@ -69,9 +73,10 @@ export function ArticleAnalysis({ article, goal, modelName }: {
           <button type="button" onClick={cancel}>Cancel analysis</button>
         </>
       ) : (
-        <button type="button" disabled={!goal.trim() || !modelName} onClick={() => void run()}>
-          Analyze with AI
-        </button>
+        <div className="button-row"><button className="button-primary" type="button"
+          disabled={!goal.trim() || !modelName} onClick={() => void run()}>
+          {state.result ? 'Analyze again' : 'Analyze with AI'}
+        </button></div>
       )}
       {state.status === 'cancelled' && (
         <p role="status">{state.result ? 'Analysis cancelled. You can continue with your previous result.' : 'Analysis cancelled.'}</p>
@@ -97,33 +102,46 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
   return (
     <>
       {cached && <p role="status">Using a cached analysis.</p>}
-      <p>
-        Extracted {coverage.extractedCharacters.toLocaleString()} characters{coverage.extractionTruncated ? ' (extraction limit reached)' : ''}.
-        {' '}Ollama received {passages.length} of {coverage.availablePassages} passages ({coverage.suppliedCharacters.toLocaleString()} characters).
-        {' '}{partial ? 'This analysis covers only the supplied text.' : 'The supplied passages cover the extracted text.'}
-      </p>
-      <details>
+      <section className="analysis-block" aria-labelledby="relevance-heading">
+        <div className="section-heading"><h3 id="relevance-heading">Relevance</h3>
+          <span className="badge" data-tone={relevance.level === 'High' ? 'positive' : relevance.level === 'Medium' ? 'partial' : undefined}>
+            {relevance.level} relevance
+          </span></div>
+        <p>{relevance.alignment}</p>
+        {relevance.topics.length > 0 && <p className="metadata"><strong>Topics</strong> {relevance.topics.join(' · ')}</p>}
+        {relevance.limitations.length > 0 && <><h4>Limitations</h4><TextList items={relevance.limitations} /></>}
+        <div>{relevance.evidence.map((evidence, index) => <SourceReference key={index} passage={sourceById.get(evidence)} />)}</div>
+      </section>
+
+      <section className="analysis-block" aria-labelledby="summary-heading">
+        <h3 id="summary-heading">Summary</h3>
+        <p>{summary.overview}</p>
+        <details className="disclosure">
+          <summary>Main ideas and takeaways</summary>
+          <div className="analysis-section-content">
+            <h4>Main ideas</h4><TextList items={summary.ideas} />
+            <h4>Takeaways</h4><TextList items={summary.takeaways} />
+          </div>
+        </details>
+      </section>
+
+      <details className="disclosure">
+        <summary>Key concepts</summary>
+        <ul className="analysis-block">{concepts.map(({ term, explanation, evidence }, index) => (
+          <li key={index}><strong>{term}</strong> {explanation}<SourceReference passage={sourceById.get(evidence)} /></li>
+        ))}</ul>
+      </details>
+
+      <details className="disclosure">
         <summary>View passages sent to Ollama</summary>
+        <p className="metadata">
+          Extracted {coverage.extractedCharacters.toLocaleString()} characters{coverage.extractionTruncated ? ' (extraction limit reached)' : ''}.
+          {' '}Ollama received {passages.length} of {coverage.availablePassages} passages ({coverage.suppliedCharacters.toLocaleString()} characters).
+          {' '}{partial ? 'The analysis covers only these excerpts.' : 'These passages cover the extracted text.'}
+        </p>
+        <p className="metadata">Compare AI claims and answers with the referenced text.</p>
         {passages.map((passage) => <SourceReference key={passage.id} passage={passage} />)}
       </details>
-      <p>Source references show the article text supplied to Ollama. Compare AI claims and answers with the referenced passage.</p>
-      <h4>Relevance · {relevance.level}</h4>
-      <p><strong>Goal alignment</strong> {relevance.alignment}</p>
-      {relevance.topics.length > 0 && <p><strong>Relevant topics</strong> {relevance.topics.join(', ')}</p>}
-      {relevance.limitations.length > 0 && <><h5>Limitations</h5><TextList items={relevance.limitations} /></>}
-      {relevance.evidence.map((evidence, index) => <SourceReference key={index} passage={sourceById.get(evidence)} />)}
-
-      <h4>Summary</h4>
-      <p>{summary.overview}</p>
-      <h5>Main ideas</h5>
-      <TextList items={summary.ideas} />
-      <h5>Takeaways</h5>
-      <TextList items={summary.takeaways} />
-
-      <h4>Key concepts</h4>
-      <ul>{concepts.map(({ term, explanation, evidence }, index) => (
-        <li key={index}><strong>{term}</strong> {explanation}<SourceReference passage={sourceById.get(evidence)} /></li>
-      ))}</ul>
 
       <RecallPractice key={recallSessionKey(recall)} questions={recall} modelName={modelName}
         sourceById={sourceById} analysisPending={analyzing} />

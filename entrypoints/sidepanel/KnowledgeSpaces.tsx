@@ -1,64 +1,90 @@
 import { useState } from 'react';
 
 import { createSpace, updateLearningGoal } from '../../lib/library';
-import { MAX_LEARNING_GOAL, MAX_SPACE_NAME, type KnowledgeSpace } from '../../lib/library-model';
+import { MAX_LEARNING_GOAL, MAX_SPACE_NAME, type KnowledgeSpace, type SpaceArticle } from '../../lib/library-model';
+import { Icon } from './Icon';
 import { SaveStatus } from './SaveStatus';
-import { useAction } from './useAction';
 import { releaseSavedDraft } from './panel-state';
+import { useAction } from './useAction';
 
 type KnowledgeSpacesProps = {
   spaces: KnowledgeSpace[];
   selected: KnowledgeSpace | undefined;
+  links: SpaceArticle[];
   onSelect: (id: string) => void;
+  onViewArticles: (id: string) => void;
 };
 
-export function KnowledgeSpaces({ spaces, selected, onSelect }: KnowledgeSpacesProps) {
+export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArticles }: KnowledgeSpacesProps) {
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
+  const [creating, setCreating] = useState(false);
   const create = useAction();
+  const counts = new Map<string, number>();
+  for (const link of links) counts.set(link.spaceId, (counts.get(link.spaceId) ?? 0) + 1);
 
   return (
-    <section aria-labelledby="knowledge-spaces">
-      <h2 id="knowledge-spaces">Knowledge Spaces</h2>
-      {selected ? (
-        <>
-          <label>
-            Active space
-            <select value={selected.id} onChange={(event) => onSelect(event.target.value)}>
-              {spaces.map((space) => <option key={space.id} value={space.id}>{space.name}</option>)}
-            </select>
-          </label>
-          <LearningGoal key={selected.id} space={selected} />
-        </>
-      ) : <p>Create a Knowledge Space to organize articles around a learning goal.</p>}
+    <>
+      <section className="card" aria-labelledby="create-space-heading">
+        <div className="section-heading">
+          <h2 id="create-space-heading">New Knowledge Space</h2>
+          {spaces.length > 0 && (
+            <button className={creating ? '' : 'button-primary'} type="button" aria-expanded={creating}
+              aria-controls={creating ? 'space-creation' : undefined} onClick={() => setCreating(!creating)}>
+              {creating ? 'Hide form' : 'New space'}
+            </button>
+          )}
+        </div>
+        {(creating || spaces.length === 0) && (
+          <form id="space-creation" onSubmit={(event) => {
+            event.preventDefault();
+            void create.run(async () => {
+              const id = await createSpace(name, goal);
+              setName('');
+              setGoal('');
+              setCreating(false);
+              onSelect(id);
+              return 'Knowledge Space created.';
+            });
+          }}>
+            {spaces.length === 0 && <p className="empty-copy">Create your first space to save an article and set a goal for analysis.</p>}
+            <label>Space name
+              <input value={name} maxLength={MAX_SPACE_NAME} required placeholder="e.g. Climate science"
+                onChange={(event) => setName(event.target.value)} />
+            </label>
+            <label>Learning goal <span className="field-hint">Optional</span>
+              <textarea value={goal} maxLength={MAX_LEARNING_GOAL} placeholder="What do you want to understand?"
+                onChange={(event) => setGoal(event.target.value)} />
+            </label>
+            <button className="button-primary" disabled={create.state.status === 'pending' || !name.trim()}>Create space</button>
+          </form>
+        )}
+        <SaveStatus state={create.state} />
+      </section>
 
-      <details open={!selected || undefined}>
-        <summary>Create a Knowledge Space</summary>
-        <form onSubmit={(event) => {
-          event.preventDefault();
-          void create.run(async () => {
-            const id = await createSpace(name, goal);
-            setName('');
-            setGoal('');
-            onSelect(id);
-            return 'Knowledge Space created.';
-          });
-        }}>
-          <label>
-            Space name
-            <input value={name} maxLength={MAX_SPACE_NAME} required
-              onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            Learning goal (optional)
-            <textarea value={goal} maxLength={MAX_LEARNING_GOAL}
-              onChange={(event) => setGoal(event.target.value)} />
-          </label>
-          <button disabled={create.state.status === 'pending' || !name.trim()}>Create space</button>
-        </form>
-      </details>
-      <SaveStatus state={create.state} />
-    </section>
+      {spaces.map((space) => {
+        const active = selected?.id === space.id;
+        const count = counts.get(space.id) ?? 0;
+        return (
+          <section className={active ? 'card space-card space-active' : 'card space-card'} key={space.id}>
+            <div className="card-heading"><span className="row-icon"><Icon name="spaces" /></span>
+              <div><h2>{space.name}</h2><p className="metadata">{count} {count === 1 ? 'article' : 'articles'}</p></div></div>
+            {active ? (
+              <>
+                <p className="active-space-label">Active for analysis</p>
+                <LearningGoal key={space.id} space={space} />
+              </>
+            ) : <p className="space-goal">{space.learningGoal || 'No learning goal set.'}</p>}
+            <div className="button-row">
+              {!active && <button type="button" onClick={() => onSelect(space.id)}>Use for analysis</button>}
+              <button className="text-button" type="button" onClick={() => onViewArticles(space.id)}>
+                View articles <Icon name="arrow" />
+              </button>
+            </div>
+          </section>
+        );
+      })}
+    </>
   );
 }
 
@@ -76,14 +102,11 @@ function LearningGoal({ space }: { space: KnowledgeSpace }) {
         return 'Learning goal saved.';
       });
     }}>
-      <label>
-        Learning goal
-        <textarea value={goal} maxLength={MAX_LEARNING_GOAL}
+      <label>Learning goal
+        <textarea value={goal} maxLength={MAX_LEARNING_GOAL} placeholder="What do you want to learn?"
           onChange={(event) => setDraft(event.target.value)} />
       </label>
-      <button disabled={save.state.status === 'pending' || goal.trim() === space.learningGoal}>
-        Save goal
-      </button>
+      <button disabled={save.state.status === 'pending' || goal.trim() === space.learningGoal}>Save goal</button>
       <SaveStatus state={save.state} />
     </form>
   );

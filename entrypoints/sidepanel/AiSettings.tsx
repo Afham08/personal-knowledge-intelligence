@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser';
 import { readAiSettings, watchAiSettings, updateAiSettings, type AiSettings } from '../../lib/ai/local-store';
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError, type AiModel } from '../../lib/ai/provider';
+import { Icon } from './Icon';
 
 type SettingsState =
   | { status: 'loading' | 'error' }
@@ -44,13 +45,11 @@ export function useAiSettings(): SettingsState {
 
 export function AiSettingsPanel({ state }: { state: SettingsState }) {
   return (
-    <section aria-labelledby="ai-settings">
-      <details>
-        <summary id="ai-settings">AI settings</summary>
-        {state.status === 'loading' && <p role="status">Loading AI settings…</p>}
-        {state.status === 'error' && <p role="alert">AI settings could not be loaded. Reopen the panel to retry.</p>}
-        {state.status === 'ready' && <OllamaSettings settings={state.settings} />}
-      </details>
+    <section className="card" aria-labelledby="ai-settings">
+      <div className="card-heading"><span className="row-icon"><Icon name="settings" /></span><h2 id="ai-settings">Local AI</h2></div>
+      {state.status === 'loading' && <p role="status">Loading AI settings…</p>}
+      {state.status === 'error' && <p role="alert">AI settings couldn’t load. Reopen PKI to try again.</p>}
+      {state.status === 'ready' && <OllamaSettings settings={state.settings} />}
     </section>
   );
 }
@@ -107,13 +106,14 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
 
   return (
     <>
-      <p>Provider: Ollama · AI {settings.enabled ? 'enabled' : 'disabled'}</p>
+      <div className="section-heading connection-heading"><p><strong>Ollama</strong></p>
+        <span className="badge" data-tone={settings.enabled ? 'positive' : undefined}>{settings.enabled ? 'AI enabled' : 'AI disabled'}</span></div>
       {settings.enabled ? (
-        <div className="ai-actions">
-          <button type="button" disabled={busy} onClick={() => void connect()}>Test connection</button>
+        <div className="button-row">
+          <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>Test connection</button>
           <button type="button" disabled={busy} onClick={() => void disable()}>Disable AI</button>
         </div>
-      ) : <button type="button" disabled={busy} onClick={() => void connect()}>Enable local AI</button>}
+      ) : <button className="button-primary" type="button" disabled={busy} onClick={() => void connect()}>Enable local AI</button>}
 
       {connection.status === 'unchecked' && <p>Connection: not checked in this panel.</p>}
       {connection.status === 'checking' && <p role="status">Checking Ollama…</p>}
@@ -135,7 +135,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
         </label>
       )}
       {settingsError && <p role="alert">{settingsError}</p>}
-      <details open={connection.status === 'error' || (connection.status === 'available' && models.length === 0) || undefined}>
+      <details className="disclosure" open={connection.status === 'error' || (connection.status === 'available' && models.length === 0) || undefined}>
         <summary>Set up Ollama in Brave</summary>
         <p>Install Ollama and download a local chat model such as <code>qwen2.5:1.5b</code>. Start Ollama on port 11434 with cloud features off. In PowerShell, quit any existing Ollama instance before starting:</p>
         <pre className="ai-command">{[

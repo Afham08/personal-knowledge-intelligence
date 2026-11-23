@@ -15,11 +15,11 @@ npm.cmd run build
 
 Open `brave://extensions` and enable **Developer mode**. Click **Load unpacked** and choose the project's `.output\chrome-mv3` directory. Click **Reload** on PKI's card after rebuilding. In Chrome, use `chrome://extensions`.
 
-Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Extract article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
+Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. **Home** captures and analyzes the current page. **Spaces** manages learning goals, **Library** searches saved articles and edits notes, and **Settings** manages Ollama. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Extract article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
 
 ## Optional Ollama setup in Brave
 
-1. Install [Ollama for Windows](https://ollama.com/download/windows). In `brave://extensions`, find PKI's extension ID. The side panel also prints your exact origin under **AI settings → Set up Ollama in Brave**.
+1. Install [Ollama for Windows](https://ollama.com/download/windows). In `brave://extensions`, find PKI's extension ID. The side panel also prints your exact origin under **Settings → Set up Ollama in Brave**.
 2. Quit Ollama from the Windows notification area if it is already running. Start it in PowerShell using the following configuration, replacing `YOUR_EXTENSION_ID` with the ID shown in Brave. Leave this terminal open.
 
    ```powershell
@@ -30,7 +30,7 @@ Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. Open
    ```
 
 3. In a second PowerShell window, run `ollama pull qwen2.5:1.5b`. This [lightweight model](https://ollama.com/library/qwen2.5:1.5b) is a 986 MB download. Inference uses additional RAM and can take a few minutes on a CPU. Small models are more likely to produce invalid citations or incomplete answers. Pick another installed local chat model if your machine can run it.
-4. In the side panel, open **AI settings**, choose **Enable local AI**, and grant the loopback permission. Select your installed model. Use **Test connection** after starting Ollama or installing a model. If connection fails, check the endpoint, compare the extension ID, and restart Ollama after changing the variables. Keep Ollama bound to loopback since the local API does not require authentication.
+4. In the side panel, open **Settings**, choose **Enable local AI**, and grant the loopback permission. Select your installed model. Use **Test connection** after starting Ollama or installing a model. If connection fails, check the endpoint, compare the extension ID, and restart Ollama after changing the variables. Keep Ollama bound to loopback since the local API does not require authentication.
 
 ## Test the analysis workflow
 
@@ -38,7 +38,7 @@ Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. Open
 2. Click **Extract article**, then **Analyze with AI**. Use **Read extracted text** to inspect what PKI extracted. Open **View passages sent to Ollama** to see the input and compare the character and passage counts. A **Source reference** links a particular claim to an excerpt for you to check.
 3. In **Active recall**, write an answer and click **Check my answer**. Read the qualitative feedback, any missing or inaccurate ideas, and one suggestion. Expand the referenced sentence before deciding whether you agree. **Reveal expected answer** remains available independently.
 4. Click **Next question**, type a draft, then navigate back and forth. Both drafts should remain available during this practice session. Try **Cancel answer check** on a fresh check and confirm the draft remains editable.
-5. Analyze again with the same article, model, and goal. Check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.
+5. Click **Analyze again** with the same article, model, and goal and check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.
 6. Stop Ollama and use **Test connection** to check the connection error. The article library, notes, and saving remain available. On `brave://settings`, extraction should be unavailable.
 
 ## Privacy and known limits

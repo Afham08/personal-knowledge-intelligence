@@ -3,9 +3,14 @@ import type { Library, SavedArticle, SpaceArticle, KnowledgeSpace } from '../../
 export const destinations = ['home', 'spaces', 'library', 'settings'] as const;
 export type Destination = typeof destinations[number];
 
-export type Route =
-  | { view: Destination }
-  | { view: 'library'; articleId: string; from: 'home' | 'library' };
+export type ReaderRoute = { view: 'library'; articleId: string; from: 'home' | 'library'; spaceId?: string };
+export type Route = { view: Destination } | ReaderRoute;
+
+export function openReader(articleId: string, from: ReaderRoute['from'], previous: ReaderRoute | undefined,
+  preferredSpace?: string, savedSpace?: string): ReaderRoute {
+  const spaceId = savedSpace ?? (previous?.articleId === articleId ? previous.spaceId : preferredSpace);
+  return { view: 'library', articleId, from, spaceId };
+}
 
 export function routeKey(route: Route): string {
   return 'articleId' in route ? 'article/' + route.articleId : route.view;

@@ -70,6 +70,7 @@ export function ArticleRow({ entry, onOpen, resume }: { entry: LibraryEntry; res
 type StudyOptions = {
   ai?: AiSettings;
   preferredSpace?: string;
+  onStudySpace: (spaceId: string) => void;
   onSettings: () => void;
   onSpaces: (id: string) => void;
 };
@@ -124,10 +125,9 @@ export function SavedLibrary({ entries, spaces, spaceFilter, onFilter, route, on
   );
 }
 
-function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSettings, onSpaces }: StudyOptions & { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onList: () => void; onBack: () => void }) {
+function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onStudySpace, onSettings, onSpaces }: StudyOptions & { entry: LibraryEntry | undefined; backTo: 'home' | 'library'; onList: () => void; onBack: () => void }) {
   const article = entry?.article;
-  const [spaceId, setSpaceId] = useState(preferredSpace);
-  const space = entry && studySpace(entry, spaceId);
+  const space = entry && studySpace(entry, preferredSpace);
   return (
     <>
       <div className="page-heading">
@@ -151,7 +151,7 @@ function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSe
         </section>
         {ai?.enabled && space && <>
           {entry.memberships.length > 1 && <label>Study in Knowledge Space
-            <select value={space.id} onChange={(event) => setSpaceId(event.target.value)}>
+            <select value={space.id} onChange={(event) => onStudySpace(event.target.value)}>
               {entry.memberships.map(({ space: member }) => <option key={member.id} value={member.id}>{member.name}</option>)}
             </select>
           </label>}

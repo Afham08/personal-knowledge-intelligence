@@ -6,7 +6,7 @@ import { CurrentArticle } from './CurrentArticle';
 import { Icon } from './Icon';
 import { KnowledgeSpaces } from './KnowledgeSpaces';
 import { ArticleRow, SavedLibrary } from './SavedLibrary';
-import { backFromArticle, destinations, homeReading, libraryEntries, routeKey, type Destination, type Route } from './navigation';
+import { backFromArticle, destinations, homeReading, libraryEntries, openReader, routeKey, type Destination, type ReaderRoute, type Route } from './navigation';
 import { useLibrary } from './useLibrary';
 
 const labels: Record<Destination, string> = {
@@ -18,7 +18,7 @@ export default function App() {
   const ai = useAiSettings();
   const [route, setRoute] = useState<Route>({ view: 'home' });
   const [returnTo, setReturnTo] = useState<Route>();
-  const [reader, setReader] = useState<Extract<Route, { articleId: string }>>();
+  const [reader, setReader] = useState<ReaderRoute>();
   const [spaceId, setSpaceId] = useState<string>();
   const [libraryFilter, setLibraryFilter] = useState('');
   const main = useRef<HTMLElement>(null);
@@ -76,10 +76,11 @@ export default function App() {
     </button>
   );
 
-  function openArticle(articleId: string, from: 'home' | 'library') {
-    const next = { view: 'library', articleId, from } as const;
+  function openArticle(articleId: string, from: 'home' | 'library', savedSpace?: string) {
+    const preferred = from === 'library' && libraryFilter ? libraryFilter : selected?.id;
+    const next = openReader(articleId, from, reader, preferred, savedSpace);
     setReader(next);
-    navigate(next, articleId !== reader?.articleId);
+    navigate(next, articleId !== reader?.articleId || next.spaceId !== reader?.spaceId);
   }
 
   function showSpaceArticles(id: string) {
@@ -111,7 +112,7 @@ export default function App() {
           </div>
           <CurrentArticle space={selected} spaces={library?.spaces ?? []} onSelect={setSpaceId} libraryReady={Boolean(library)}
             ai={ai.status === 'ready' ? ai.settings : undefined}
-            onOpenSaved={(id) => openArticle(id, 'home')} onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
+            onOpenSaved={(id) => openArticle(id, 'home', selected?.id)} onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
           <WelcomeGuide onDismiss={() => {
             const home = main.current?.querySelector<HTMLElement>('[data-view="home"]:not([hidden])');
@@ -168,7 +169,8 @@ export default function App() {
         <div data-view="library" hidden={route.view !== 'library'} className="page">
           {library && <SavedLibrary key={listVisit} entries={entries} spaces={library.spaces} spaceFilter={libraryFilter}
             onFilter={setLibraryFilter} route={reader ?? route} ai={ai.status === 'ready' ? ai.settings : undefined}
-            preferredSpace={reader?.from === 'library' && libraryFilter ? libraryFilter : selected?.id} onSettings={() => openSetup('settings')}
+            preferredSpace={reader?.spaceId} onStudySpace={(spaceId) => setReader(current => current && { ...current, spaceId })}
+            onSettings={() => openSetup('settings')}
             onSpaces={(id) => { setSpaceId(id); openSetup('spaces'); }} onOpen={(id) => openArticle(id, 'library')}
             onList={() => { setReader(undefined); navigate({ view: 'library' }); }}
             onBack={() => { setReader(undefined); navigate(backFromArticle(route)); }} />}

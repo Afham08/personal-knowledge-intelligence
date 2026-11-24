@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { articleHost, backFromArticle, destinations, filterLibrary, homeReading, libraryEntries, routeKey, studySpace } from '../entrypoints/sidepanel/navigation.ts';
+import { articleHost, backFromArticle, destinations, filterLibrary, homeReading, libraryEntries, openReader, routeKey, studySpace } from '../entrypoints/sidepanel/navigation.ts';
 
 const library = {
   version: 1,
@@ -60,6 +60,15 @@ test('reading positions distinguish the list and each article across entry point
   assert.equal(routeKey(reader), routeKey({ ...reader, from: 'library' }));
   assert.notEqual(routeKey(reader), routeKey({ view: 'library' }));
   assert.notEqual(routeKey(reader), routeKey({ ...reader, articleId: '2' }));
+});
+
+test('opening a new save selects its space while resuming preserves the reader selection', () => {
+  const first = openReader('1', 'library', undefined, 'a');
+  const second = openReader('1', 'home', first, 'a', 'b');
+  assert.equal(second.spaceId, 'b');
+  assert.equal(studySpace(libraryEntries(library)[0], second.spaceId).id, 'b');
+  assert.equal(openReader('1', 'home', second, 'a').spaceId, 'b');
+  assert.equal(openReader('2', 'library', second, 'a').spaceId, 'a');
 });
 
 test('Home offers the open reader once even when it is older than the recent saves', () => {

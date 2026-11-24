@@ -1,54 +1,80 @@
 # Personal Knowledge Intelligence
 
-PKI is a Chrome and Brave extension for organizing online reading around personal learning goals. It extracts article text on request, saves articles and notes to local Knowledge Spaces, and offers optional local AI for relevance, summaries, key concepts, and active recall with optional formative feedback.
+PKI turns an article you choose into material you can study again. Save it with a learning goal, keep your own notes, and optionally use Ollama on your computer for a summary, source-linked concepts and recall practice. Capture, notes, backups and offline review work without an account or AI service.
 
-## Build and install locally
+## Install the beta in Chrome or Brave
 
-In Windows PowerShell, run these commands from the project folder with Node.js 24.
+1. Extract `pki-0.1.0-beta.1-chrome-mv3.zip` into a dedicated folder. Open the folder and check that `manifest.json` is directly inside it.
+2. Open `chrome://extensions` or `brave://extensions`, enable **Developer mode**, select **Load unpacked**, and choose that folder. Use a Chromium browser version 116 or newer with side-panel support.
+3. Pin **Personal Knowledge Intelligence** in the Extensions menu. On an ordinary article page, click the toolbar icon to open the panel and grant temporary access to that tab.
+
+**Upgrading an unpacked installation:** Keep the same browser profile and extension folder. Export a backup from Settings first if your installed version supports it. Close the panel, replace the production files in that folder, and click **Reload** on PKI's extensions card. Removing the extension can erase its storage. Loading from a different path can create a different extension ID.
+
+## From reading to review
+
+1. Under **Spaces**, create a Knowledge Space with a name and learning goal. On **Home**, choose **Capture article**, select the space and save. The same URL can belong to multiple spaces with an independent note in each.
+2. Choose **Open saved article**, or return later through Home or **Library**. Library supports searching, filtering by space, editing notes, reading extracted text and opening the original page. The optional quick start can be skipped and reopened in **Settings**.
+3. With local AI enabled, choose **Analyze with AI**. Read the summary, relevance, limitations and concepts. Expand **View passages sent to Ollama** to see exactly which excerpts were used. For long articles PKI takes up to eight 400-character excerpts across the text, weighing goal relevance, distinct vocabulary and concluding material. Capture itself is capped at 100,000 characters.
+4. Choose **Go to recall**. Write an answer, then choose **Check my answer** for qualitative feedback or **Reveal expected answer** for self-review. Open the source and decide whether the explanation fits. Drafts persist locally as you type. Editing an answer allows another check. A previously checked identical answer can show its saved feedback.
+5. Return to the article and choose **Open saved analysis** even when Ollama is stopped or AI is disabled. The saved review identifies its model and goal. To generate fresh material for a changed goal, select the new goal and analyze. In **Spaces → Learning progress**, see distinct articles studied, questions attempted, dated answer checks and related concepts to revisit. Revisiting a result does not create an extra article or question.
+6. In **Settings → Backup and restore**, choose **Export backup**. The readable JSON includes your library, notes, goals, written answers, history and cached results. Treat it as private. To restore, select the JSON file and read the number of restored and skipped records. PKI validates the whole backup before merging. Existing records win on conflicts. Repeated imports skip duplicates. Permissions and AI settings are configured separately.
+
+## Enable optional local AI
+
+Install Ollama, then download a model with `ollama pull qwen3:4b` or `ollama pull qwen2.5:1.5b`. Model installation requires internet access and disk space. In PKI Settings copy the exact extension origin, such as `chrome-extension://YOUR_EXTENSION_ID`. Use your actual ID in the commands below. Bind Ollama to loopback, disable cloud inference, and allow that single origin. Restart the server for environment changes to take effect.
+
+**Windows, PowerShell.** Quit the Ollama tray application first. Leave this terminal open while using AI.
 
 ```powershell
-npm.cmd ci
-npm.cmd run typecheck
-npm.cmd test
-npm.cmd run build
+$env:OLLAMA_HOST = "127.0.0.1:11434"
+$env:OLLAMA_NO_CLOUD = "1"
+$env:OLLAMA_ORIGINS = "chrome-extension://YOUR_EXTENSION_ID"
+ollama serve
 ```
 
-Open `brave://extensions` and enable **Developer mode**. Click **Load unpacked** and choose the project's `.output\chrome-mv3` directory. Click **Reload** on PKI's card after rebuilding. In Chrome, use `chrome://extensions`.
+**macOS, Ollama app.** Quit the app, run the following in Terminal, then relaunch Ollama. The variables apply to the current login session.
 
-Pin **Personal Knowledge Intelligence** from the browser's Extensions menu. **Home** captures and analyzes the current page. **Spaces** manages learning goals, **Library** searches saved articles and edits notes, and **Settings** manages Ollama. Open a public article and click the PKI toolbar icon to grant that tab temporary access. Use **Capture article**, select a Knowledge Space, and save the article with an optional note. Saving the same article twice in one space keeps the existing entry. Saving it to another space gives that space its own note.
+```sh
+launchctl setenv OLLAMA_HOST "127.0.0.1:11434"
+launchctl setenv OLLAMA_NO_CLOUD "1"
+launchctl setenv OLLAMA_ORIGINS "chrome-extension://YOUR_EXTENSION_ID"
+```
 
-On first use, choose **Show quick start** on Home for a short guide, or **Skip guide** to get straight to reading. **Finish guide** and **Skip guide** remember your choice in this browser profile. Reopen the steps anytime under **Settings → Quick start guide**.
+**Linux, systemd installation.** Run `sudo systemctl edit ollama.service`, add the following service override, then run `sudo systemctl daemon-reload` and `sudo systemctl restart ollama`.
 
-## Optional Ollama setup in Brave
+```ini
+[Service]
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+Environment="OLLAMA_NO_CLOUD=1"
+Environment="OLLAMA_ORIGINS=chrome-extension://YOUR_EXTENSION_ID"
+```
 
-1. Install [Ollama for Windows](https://ollama.com/download/windows). In `brave://extensions`, find PKI's extension ID. The side panel also prints your exact origin under **Settings → Set up Ollama in Brave**.
-2. Quit Ollama from the Windows notification area if it is already running. Start it in PowerShell using the following configuration, replacing `YOUR_EXTENSION_ID` with the ID shown in Brave. Leave this terminal open.
+In PKI **Settings**, choose **Enable local AI**, approve local Ollama access, test the connection and select the installed model. Windows was used for beta inference checks. macOS and Linux steps follow Ollama's environment configuration guidance. [Ollama FAQ](https://docs.ollama.com/faq)
 
-   ```powershell
-   $env:OLLAMA_HOST = "127.0.0.1:11434"
-   $env:OLLAMA_NO_CLOUD = "1"
-   $env:OLLAMA_ORIGINS = "chrome-extension://YOUR_EXTENSION_ID"
-   ollama serve
-   ```
+## Troubleshooting and limits
 
-3. In a second PowerShell window, run `ollama pull qwen2.5:1.5b`. This [lightweight model](https://ollama.com/library/qwen2.5:1.5b) is a 986 MB download. Inference uses additional RAM and can take a few minutes on a CPU. Small models are more likely to produce invalid citations or incomplete answers. Pick another installed local chat model if your machine can run it.
-4. In the side panel, open **Settings**, choose **Enable local AI**, and grant the loopback permission. Select your installed model. Use **Test connection** after starting Ollama or installing a model. If connection fails, check the endpoint, compare the extension ID, and restart Ollama after changing the variables. Keep Ollama bound to loopback since the local API does not require authentication.
+| Symptom | What to check |
+| --- | --- |
+| Capture is unavailable or empty | Click PKI's toolbar icon on the article tab. Browser settings pages, unsupported viewers and pages without readable prose may be unavailable. |
+| Ollama is unreachable or denies the origin | Confirm the server is running on 127.0.0.1:11434, the origin matches this installation, and local access is granted. Restart Ollama after changing its environment, then test the connection. |
+| No eligible model | Run `ollama list`, install a local chat model, then refresh in Settings. Update Ollama if it lacks local-only model routing. |
+| Analysis times out, is truncated or returns unusable evidence | Cancel or retry after the model is loaded. Close competing workloads or choose another installed model. PKI makes at most one repair attempt for invalid analysis. A failed check leaves the written draft available. |
+| Older review is missing from the offline list | The cache holds up to 30 results. For the previous analysis format, open the unchanged article and analyze once with the original goal and installed model revision so PKI can identify the cache entry. |
+| Draft or backup write fails | Check browser storage and free disk space. Export a backup before removing the extension or switching profiles. Import accepts PKI JSON up to 12 MiB. |
 
-## Test the analysis workflow
+A reference opens a real supplied passage. Whether it supports a particular interpretation still requires judgment. Small models can omit details, misjudge an answer, or repeat ideas in different words. Progress records activity and model feedback. It cannot establish mastery. Cached reviews and progress live in one browser profile. There is no automatic cross-device sync.
 
-1. Open a public article, click PKI's toolbar icon, and choose a Knowledge Space with a learning goal.
-2. Click **Capture article**, choose **Save to Knowledge Space**, and click **Save article**. Choose **Open saved article** to study the stored copy. You can also analyze the capture immediately or reopen the saved article later from **Recently saved** or **Library**. For a saved article shared across spaces, choose the study space. Click **Analyze with AI**. Use **Read extracted text** to inspect what PKI extracted. Open **View passages sent to Ollama** to see the input and compare the character and passage counts. A **Source reference** links a particular claim to an excerpt for you to check.
-3. In **Active recall**, write an answer and click **Check my answer**. Read the qualitative feedback, any missing or inaccurate ideas, and one suggestion. Expand the referenced sentence before deciding whether you agree. **Reveal expected answer** remains available independently.
-4. Click **Next question**, type a draft, then navigate back and forth. Both drafts should remain available during this practice session. Try **Cancel answer check** on a fresh check and confirm the draft remains editable.
-5. Click **Analyze again** with the same article, model, and goal and check for **Using a cached analysis**. Change the learning goal and confirm the next analysis runs again.
-6. Stop Ollama and use **Test connection** to check the connection error. The article library, notes, and saving remain available. On `brave://settings`, extraction should be unavailable.
+## Build and verify
 
-## Privacy and known limits
+Use Node.js 24, npm and Python 3. On Windows PowerShell, use `npm.cmd` if script execution is restricted.
 
-- AI starts disabled. PKI requests optional access to the loopback Ollama port only when the user enables or tests AI. Its provider uses the fixed local port 11434 and rejects redirects. The Ollama setup above disables cloud inference and allows PKI's exact extension origin.
-- An explicit analysis sends the article title, the selected goal, and up to eight plain-text passages of up to 400 characters each to Ollama. Notes, page URLs, browsing history, and raw HTML are excluded. For long articles, PKI retains the introduction and selects goal-related excerpts from bands across the rest of the text. It favors prose over bibliographic text and reports partial coverage, including when extraction hit its limit.
-- PKI validates every passage ID against the passages supplied for that request and displays their text directly. A source reference identifies an excerpt for you to check. It does not establish that the excerpt supports the model's claim. PKI retries invalid model output once, with cancellation available during both attempts.
-- Clicking **Check my answer** sends the current question, expected answer, verified passage, and draft (up to 1,200 characters) to Ollama with an explicit local-only model reference. If your Ollama version lacks this routing, update Ollama. Written drafts stay in panel memory until it closes. Navigating away and returning restores a draft for the same article, goal, model, question, expected answer, and source text. Only explicitly saved notes and goals go into the library.
-- Recall feedback is formative. A valid source reference shows where the evidence came from. The model can misjudge a paraphrase or select a sentence that only partly supports its feedback. It can answer **Unable to Assess** when a claim exceeds the source. Use the source and expected answer to make your own judgment.
-- Analysis results are stored in the browser profile. PKI keeps up to 30 validated results and checks the current model digest before reuse. Results from previous prompt or excerpt-selection versions are skipped. An Ollama connection is therefore needed even for a cache hit. The library is independent of this cache.
-- Automated tests use mock Ollama responses to cover model discovery, article coverage, answer feedback, validation, errors, cancellation, and cache behavior. `npm.cmd test` also checks article IDs and duplicate prevention. A real model must be checked separately in Brave.
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run package
+```
+
+The build directory is `.output/chrome-mv3`. Packaging validates manifest metadata, assets, required icons and archive contents, then writes `.output/pki-0.1.0-beta.1-chrome-mv3.zip`. If your system names Python `python3`, run `npm run build` followed by `python3 scripts/package.py`. CI runs type checking, the fixture-based test suite and packaging. Live Ollama and unpacked-browser checks are separate.
+
+See the [privacy policy](PRIVACY.md), [beta release notes](CHANGELOG.md), [contribution guidelines](CONTRIBUTING.md) and [store submission checklist](docs/store-submission.md). The owner has yet to select a license for PKI's original code. Bundled dependency notices are included in the distribution.

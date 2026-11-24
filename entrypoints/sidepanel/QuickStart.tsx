@@ -10,7 +10,7 @@ function Steps() {
     <ol className="guide-steps">
       <li><strong>Create a Knowledge Space.</strong> In Spaces, name a topic and add a learning goal if you have one.</li>
       <li><strong>Save your first article.</strong> Open an article, click the PKI toolbar icon, then choose Capture article on Home. Pick a space and save.</li>
-      <li><strong>Practice when you’re ready.</strong> Local AI is optional. Connect Ollama in Settings, open a saved article, and choose Analyze with AI. Answer a recall question and compare it with the source. Revisit your drafts and see your history in Spaces.</li>
+      <li><strong>Practice when you’re ready.</strong> Local AI is optional. Connect Ollama in Settings, open a saved article, and choose Analyze with AI. Answer a recall question and compare it with the source. Start daily revision on Home. In Spaces, ask about your saved articles or compare sources. Optional semantic search is configured separately in Settings.</li>
     </ol>
   );
 }

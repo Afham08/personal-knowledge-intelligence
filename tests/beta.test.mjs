@@ -53,7 +53,7 @@ test('backup round trip restores the original library, drafts and assessments; r
 
 test('rejects unsafe URLs, changed IDs, missing assignments, malformed feedback and incompatible imports', async () => {
   for (const mutate of [
-    b => { b.version = 2; }, b => { b.library.articles[0].url = 'javascript:void(0)'; },
+    b => { b.version = 3; }, b => { b.library.articles[0].url = 'javascript:void(0)'; },
     b => { b.library.articles[0].url += '/other'; }, b => { b.library.links[0].spaceId = 'unknown'; },
     b => { b.study[2].feedback.evidence.text = 'Fabricated.'; }, b => { b.cache = { '__bad': {} }; },
   ]) {

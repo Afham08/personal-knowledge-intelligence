@@ -58,7 +58,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
   const [connection, setConnection] = useState<Connection>({ status: 'unchecked' });
   const [saving, setSaving] = useState(false);
   const [settingsError, setSettingsError] = useState('');
-  const models = connection.status === 'available' ? connection.models : [];
+  const models = connection.status === 'available' ? connection.models.filter(m=>!m.name.startsWith('nomic-embed-text')) : [];
   const busy = saving || connection.status === 'checking';
 
   async function connect() {
@@ -126,7 +126,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
       )}
       {settings.enabled && (
         <label>
-          Selected model
+          Generation model
           <select value={settings.modelName} disabled={busy || models.length === 0}
             onChange={(event) => void selectModel(event.target.value)}>
             <option value="">Choose an installed local model</option>
@@ -150,7 +150,18 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
         ].join('\n')}</pre>
         <p>Leave that window open. In a second PowerShell window, install a small model:</p>
         <pre className="ai-command">ollama pull qwen2.5:1.5b</pre>
-        <p>Once the download finishes, connect above and select the model.</p>
+        <p>For a larger generation model try <code>ollama pull qwen3:4b</code>. More memory and time may be needed. Optional semantic search uses a separate model:</p>
+        <pre className="ai-command">ollama pull nomic-embed-text</pre>
+        <button onClick={async e=>{
+          const commands=Array.from(e.currentTarget.closest('details')!.querySelectorAll('pre')).map(el=>el.textContent);
+          try{await navigator.clipboard.writeText(commands[0]??'');setSettingsError('Startup commands copied.');}
+          catch{setSettingsError('Select and copy the commands above.');}
+        }}>Copy startup commands</button>
+        <button onClick={async()=>{
+          try{await navigator.clipboard.writeText('ollama pull nomic-embed-text');setSettingsError('Embedding model command copied.');}
+          catch{setSettingsError('Select and copy the embedding command above.');}
+        }}>Copy embedding command</button>
+        <p>If the port is already in use, quit your existing Ollama tray process before starting another. For denied access, compare the exact origin above and restart Ollama. Select a generation model, then use Update index only if you want semantic search.</p>
       </details>
     </>
   );

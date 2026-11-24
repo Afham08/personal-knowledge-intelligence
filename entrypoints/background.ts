@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 
+import { cleanIndex } from '../lib/knowledge-store';
 import { validStudy } from '../lib/backup';
 import { studyKey } from '../lib/study';
 import { ACTIVE_TAB_REFRESH } from '../lib/active-tab';
@@ -10,6 +11,9 @@ export default defineBackground(() => {
     console.error('Could not restrict PKI storage to extension pages.', error);
   });
 
+  browser.storage.onChanged.addListener((changes,area)=>{
+    if(area==='local' && changes['pki.library'])void cleanIndex().catch(()=>undefined);
+  });
   // Keep a dispatched write alive when the originating panel closes.
   browser.runtime.onMessage.addListener((message, sender, reply) => {
     if (sender.url !== browser.runtime.getURL('/sidepanel.html') || message?.type !== 'pki:save-study') return;

@@ -1,3 +1,4 @@
+import { knowledgeKey } from '../../lib/revision';
 import { useState } from 'react';
 import { browser } from 'wxt/browser';
 import { BACKUP_LIMIT, cacheKey, fromStorage, libraryKey, mergeBackup, parseBackup } from '../../lib/backup';
@@ -24,14 +25,14 @@ export function BackupPanel() {
     const incoming = await parseBackup(await file.text());
     // Hold the same locks as normal writers and commit the entire merge in one storage operation.
     return navigator.locks.request(libraryKey, () => navigator.locks.request(cacheKey, () =>
-      navigator.locks.request('pki.study', async () => {
+      navigator.locks.request('pki.study', () => navigator.locks.request(knowledgeKey, async () => {
         const result = mergeBackup(fromStorage(await browser.storage.local.get(null)), incoming);
         if (result.added) await browser.storage.local.set(result.data);
         return result.added + ' records restored. ' + result.kept + ' existing or over-limit records skipped.';
-      })));
+      }))));
   }
   return <section className="card"><h2>Backup and restore</h2>
-    <p>Export spaces, articles, notes, drafts, feedback and cached analyses as a readable JSON file. Keep it somewhere private.</p>
+    <p>Export spaces, articles, notes, drafts, feedback, revision history, space chats and cached analyses as a readable JSON file. Keep it somewhere private.</p>
     <button type="button" disabled={busy} onClick={() => void perform(download)}>Export backup</button>
     <label>Restore from a PKI backup<input type="file" accept=".json,application/json" disabled={busy} onChange={e => {
       const file = e.target.files?.[0]; e.target.value = '';

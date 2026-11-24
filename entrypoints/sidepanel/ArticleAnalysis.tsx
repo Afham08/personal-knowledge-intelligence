@@ -5,6 +5,8 @@ import { analyzeArticle, articleFingerprint, reopenReview, type Review } from '.
 import { localAnalysisCache, reviewsFor } from '../../lib/ai/local-store';
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError } from '../../lib/ai/provider';
+import { changeKnowledge } from '../../lib/knowledge-store';
+import { cardId } from '../../lib/revision';
 import { normalizeArticleUrl } from '../../lib/library-model';
 import { Icon } from './Icon';
 import { saveStudy } from './useStudy';
@@ -70,6 +72,14 @@ export function ArticleAnalysis({ article, goal, modelName, spaceId, enabled, on
       if (request.current === controller) {
         setState({ status: 'ready', result });
         if ('saveFailed' in result && result.saveFailed) setStorageError('Analysis is available in this panel, but could not be saved for offline review.');
+        void changeKnowledge(data=>{
+          for(const q of result.analysis.recall){
+            const passage=result.passages.find(p=>p.id===q.evidence)!;
+            const practice={spaceId,url:normalizeArticleUrl(article.url),model:result.model.name,goal:result.goal,question:q.question,expected:q.answer,passage:passage.text};
+            const id=cardId(practice);
+            if(!data.cards.some(c=>c.id===id))data.cards.push({...practice,id,concepts:result.analysis.concepts.filter(c=>c.evidence===q.evidence).map(c=>c.term)});
+          }
+        }).catch(()=>setStorageError('Could not save questions for offline revision.'));
         void saveStudy({ kind: 'study', spaceId, url: normalizeArticleUrl(article.url), model: result.model.name, goal: result.goal })
           .catch(() => setStorageError('Study progress could not be saved. Check browser storage.'));
       }

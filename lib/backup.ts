@@ -1,3 +1,4 @@
+import { emptyKnowledge, knowledgeKey, validKnowledge, type Knowledge } from './revision.ts';
 import { emptyLibrary, identifyArticle, type Library } from './library-model.ts';
 import { createAnalysisSchema, matchesSchema } from './ai/schema.ts';
 import { isObject } from './ai/provider.ts';
@@ -7,7 +8,7 @@ export const BACKUP_LIMIT = 12 * 1024 * 1024;
 export const libraryKey = 'pki.library';
 export const cacheKey = 'pki.ai.cache.v1';
 type Dict = Record<string, unknown>;
-export type Backup = { format: 'PKI'; version: 1; library: Library; study: StudyRecord[]; cache: Dict };
+export type Backup = { format: 'PKI'; version: 2; knowledge: Knowledge; index: {model: 'nomic-embed-text:latest'; rebuild: true}; library: Library; study: StudyRecord[]; cache: Dict };
 
 function requireValue(condition: unknown): asserts condition {
   if (!condition) throw new Error('Invalid or incompatible PKI data. The restore was cancelled.');
@@ -57,7 +58,9 @@ export function validStudy(r: unknown): r is StudyRecord {
 }
 
 export function fromStorage(data: Dict): Backup {
-  return { format: 'PKI', version: 1, library: validateLibrary(data[libraryKey] ?? emptyLibrary),
+  const knowledge=data[knowledgeKey]??emptyKnowledge();
+  requireValue(validKnowledge(knowledge));
+  return { format: 'PKI', version: 2, index: {model:'nomic-embed-text:latest',rebuild:true}, knowledge, library: validateLibrary(data[libraryKey] ?? emptyLibrary),
     study: Object.entries(data).filter(([k]) => k.startsWith('pki.study.')).map(([,r]) => {
       requireValue(validStudy(r)); return r;
     }), cache: (data[cacheKey] ?? {}) as Dict };
@@ -65,7 +68,7 @@ export function fromStorage(data: Dict): Backup {
 export async function parseBackup(raw: string): Promise<Backup> {
   requireValue(raw.length <= BACKUP_LIMIT);
   const v: unknown = JSON.parse(raw);
-  requireValue(isObject(v) && v.format === 'PKI' && v.version === 1 && Array.isArray(v.study) && isObject(v.cache));
+  requireValue(isObject(v) && v.format === 'PKI' && (v.version === 1 || v.version === 2) && Array.isArray(v.study) && isObject(v.cache));
   const library = validateLibrary(v.library);
   for (const article of library.articles) requireValue((await identifyArticle(article)).id === article.id);
   const study = v.study;
@@ -83,7 +86,9 @@ export async function parseBackup(raw: string): Promise<Backup> {
     }
     requireValue(matchesSchema(item.analysis ?? item, createAnalysisSchema()));
   }
-  return { format: 'PKI', version: 1, library, study, cache: v.cache };
+  const knowledge=v.version===1 ? emptyKnowledge() : v.knowledge;
+  requireValue(validKnowledge(knowledge) && knowledge.cards.every(c=>spaces.has(c.spaceId)) && knowledge.turns.every(t=>spaces.has(t.spaceId)));
+  return { format: 'PKI', version: 2, index: {model:'nomic-embed-text:latest',rebuild:true}, knowledge, library, study, cache: v.cache };
 }
 
 export function mergeBackup(local: Backup, incoming: Backup) {
@@ -102,5 +107,10 @@ export function mergeBackup(local: Backup, incoming: Backup) {
     links: merge(local.library.links, incoming.library.links, linkKey) };
   const study = merge(local.study, incoming.study, studyKey);
   const cache = Object.fromEntries(merge(Object.entries(local.cache), Object.entries(incoming.cache), ([key]) => key, 30));
-  return { added, kept, data: { [libraryKey]: library, [cacheKey]: cache, ...Object.fromEntries(study.map(r => [studyKey(r), r])) } };
+  const knowledge:Knowledge={
+    turns:merge(local.knowledge.turns,incoming.knowledge.turns,t=>t.id),
+    cards:merge(local.knowledge.cards,incoming.knowledge.cards,c=>c.id),
+    ratings:merge(local.knowledge.ratings,incoming.knowledge.ratings,r=>r.id),
+  };
+  return { added, kept, data: { [knowledgeKey]:knowledge, [libraryKey]: library, [cacheKey]: cache, ...Object.fromEntries(study.map(r => [studyKey(r), r])) } };
 }

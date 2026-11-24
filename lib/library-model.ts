@@ -17,15 +17,19 @@ export const MAX_SPACE_NAME = 80;
 export const MAX_LEARNING_GOAL = 600;
 export const MAX_NOTE = 4000;
 
-export async function identifyArticle(article: ExtractedArticle): Promise<SavedArticle> {
-  const url = new URL(article.url);
+export function normalizeArticleUrl(address: string) {
+  const url = new URL(address);
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
     throw new Error('Only regular HTTP or HTTPS article URLs can be saved.');
   }
 
   // Ignore section anchors while preserving query parameters and common hash routes.
   if (!url.hash.startsWith('#/') && !url.hash.startsWith('#!/')) url.hash = '';
-  const normalizedUrl = url.href;
+  return url.href;
+}
+
+export async function identifyArticle(article: ExtractedArticle): Promise<SavedArticle> {
+  const normalizedUrl = normalizeArticleUrl(article.url);
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalizedUrl));
   const id = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
   return { ...article, url: normalizedUrl, id };

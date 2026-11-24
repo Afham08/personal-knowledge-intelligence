@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 
+import { validateLibrary } from './backup';
 import type { ExtractedArticle } from './article';
 import {
   attachArticle, editArticleNote, emptyLibrary, identifyArticle, MAX_LEARNING_GOAL, MAX_SPACE_NAME,
@@ -15,7 +16,7 @@ export async function readLibrary(): Promise<Library> {
       !Array.isArray(stored.articles) || !Array.isArray(stored.links)) {
     throw new Error('The saved library format could not be read.');
   }
-  return { version: 1, spaces: stored.spaces, articles: stored.articles, links: stored.links };
+  return validateLibrary(stored);
 }
 
 export function watchLibrary(refresh: () => void): () => void {

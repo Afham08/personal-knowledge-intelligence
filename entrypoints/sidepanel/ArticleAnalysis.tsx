@@ -1,18 +1,23 @@
-import { useEffect, useId, useReducer, useRef } from 'react';
+import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { analyzeArticle } from '../../lib/ai/analysis';
-import { localAnalysisCache } from '../../lib/ai/local-store';
+import { analyzeArticle, articleFingerprint, reopenReview, type Review } from '../../lib/ai/analysis';
+import { localAnalysisCache, reviewsFor } from '../../lib/ai/local-store';
 import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError } from '../../lib/ai/provider';
+import { normalizeArticleUrl } from '../../lib/library-model';
 import { Icon } from './Icon';
+import { saveStudy } from './useStudy';
+import type { StudyContext } from '../../lib/study';
 import { RecallPractice } from './RecallPractice';
 import { SourceReference } from './SourceReference';
 import { recallSessionKey, summaryPoints, updateAnalysis, type AnalysisResult } from './panel-state';
 import type { ExtractedArticle } from '../../lib/article';
 
-export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings }: {
+export function ArticleAnalysis({ article, goal, modelName, spaceId, enabled, onSpaces, onSettings }: {
   article: ExtractedArticle;
+  spaceId: string;
+  enabled: boolean;
   goal: string;
   modelName: string;
   onSpaces: () => void;
@@ -26,21 +31,48 @@ export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings
   }, []);
   const analyzing = state.status === 'running' || state.status === 'retrying';
 
-  async function run() {
+  const [openingSaved, setOpeningSaved] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [storageError, setStorageError] = useState('');
+  useEffect(() => {
+    let active = true;
+    let generation = 0;
+    function refresh() {
+      const current = ++generation;
+      void articleFingerprint(article).then(reviewsFor).then(items => {
+        if (active && current === generation) { setReviews(items); setReviewIndex(0); }
+      }).catch(() => { if (active) setStorageError('Saved analyses could not be loaded.'); });
+    }
+    refresh();
+    const changed: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, area) => {
+      if (area === 'local' && 'pki.ai.cache.v1' in changes) refresh();
+    };
+    browser.storage.onChanged.addListener(changed);
+    return () => { active = false; browser.storage.onChanged.removeListener(changed); };
+  }, [article.title, article.text, article.truncated]);
+
+  async function run(review?: Review) {
     if (request.current) return;
     const controller = new AbortController();
     request.current = controller;
+    setOpeningSaved(Boolean(review));
+    setStorageError('');
     setState({ status: 'running' });
     try {
-      const allowed = await browser.permissions.contains({ origins: [OLLAMA_ORIGIN_PERMISSION] });
-      if (!allowed) throw new AiError('permission', 'Open AI settings and test the connection to grant Ollama access.');
-      const result = await analyzeArticle({
+      if (!review && (!enabled || !await browser.permissions.contains({ origins: [OLLAMA_ORIGIN_PERMISSION] }))) throw new AiError('permission', 'Open AI settings and test the connection to grant Ollama access.');
+      const result = review ? await reopenReview(article, review) : await analyzeArticle({
         article, goal, modelName, cache: localAnalysisCache, provider: ollamaProvider, signal: controller.signal,
         onRetry: () => {
           if (request.current === controller) setState({ status: 'retrying' });
         },
       });
-      if (request.current === controller) setState({ status: 'ready', result });
+      if (request.current === controller) {
+        setState({ status: 'ready', result });
+        if ('saveFailed' in result && result.saveFailed) setStorageError('Analysis is available in this panel, but could not be saved for offline review.');
+        void saveStudy({ kind: 'study', spaceId, url: normalizeArticleUrl(article.url), model: result.model.name, goal: result.goal })
+          .catch(() => setStorageError('Study progress could not be saved. Check browser storage.'));
+      }
     } catch (error) {
       if (request.current === controller) {
         setState({
@@ -59,23 +91,31 @@ export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings
     setState({ status: 'cancelled' });
   }
 
+  if (!enabled && !reviews.length && !storageError) return null;
   return (
     <section className="card analysis-card" aria-label="AI article analysis">
       <h2>Article analysis</h2>
-      {goal.trim() && <p className="metadata"><strong>Learning goal</strong> {goal}</p>}
-      {!goal.trim() && <p>Add a learning goal to guide this analysis. <button className="text-button"
+      {reviews.length > 0 && <div className="analysis-block">
+        <label>Saved analyses<select value={reviewIndex} onChange={e => setReviewIndex(Number(e.target.value))}>
+          {reviews.map((r, i) => <option key={i} value={i}>{r.model.name} · {r.goal} · {new Date(r.savedAt).toLocaleDateString()}</option>)}
+        </select></label>
+        <button type="button" disabled={analyzing} onClick={() => void run(reviews[reviewIndex])}>Open saved analysis</button>
+      </div>}
+      {storageError && <p role="alert">{storageError}</p>}
+      {enabled && goal.trim() && <p className="metadata"><strong>Learning goal</strong> {goal}</p>}
+      {enabled && !goal.trim() && <p>Add a learning goal to guide this analysis. <button className="text-button"
         type="button" onClick={onSpaces}>Open Spaces</button></p>}
-      {!modelName && <p>Choose an installed model to begin. <button className="text-button"
+      {enabled && !modelName && <p>Choose an installed model to begin. <button className="text-button"
         type="button" onClick={onSettings}>Open Settings</button></p>}
       {analyzing ? (
         <>
           <p role="status">{state.status === 'retrying'
             ? 'Ollama returned an invalid result. Retrying once…'
-            : 'Analyzing with Ollama… This can take a few minutes.'}</p>
+            : openingSaved ? 'Opening saved analysis…' : 'Analyzing with Ollama… This can take a few minutes.'}</p>
           <button type="button" onClick={cancel}>Cancel analysis</button>
         </>
       ) : (
-        <div className="button-row"><button className="button-primary" type="button"
+        enabled && <div className="button-row"><button className="button-primary" type="button"
           disabled={!goal.trim() || !modelName} onClick={() => void run()}>
           {state.result ? 'Analyze again' : 'Analyze with AI'}
         </button></div>
@@ -86,7 +126,8 @@ export function ArticleAnalysis({ article, goal, modelName, onSpaces, onSettings
       {state.status === 'error' && (
         <p role="alert">{state.message} <button type="button" className="text-button" onClick={onSettings}>Open Settings</button>{state.result && ' You can continue with your previous result.'}</p>
       )}
-      {state.result && <AnalysisResult context={JSON.stringify([article.url, goal, modelName])} {...state.result} modelName={modelName} analyzing={analyzing} />}
+      {state.result && <AnalysisResult {...state.result} context={{ spaceId, url: normalizeArticleUrl(article.url), model: state.result.model.name, goal: state.result.goal }}
+        canCheck={enabled && state.result.model.name === modelName} analyzing={analyzing} />}
     </section>
   );
 }
@@ -95,9 +136,9 @@ function TextList({ items }: { items: string[] }) {
   return items.length > 0 && <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;
 }
 
-function AnalysisResult({ analysis, passages, cached, partial, coverage, modelName, analyzing, context }: AnalysisResult & {
-  context: string;
-  modelName: string;
+function AnalysisResult({ analysis, passages, cached, partial, coverage, canCheck, analyzing, context }: AnalysisResult & {
+  context: StudyContext;
+  canCheck: boolean;
   analyzing: boolean;
 }) {
   const id = useId();
@@ -115,6 +156,7 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
           heading?.scrollIntoView({ block: 'start' });
         }}>Go to recall <Icon name="arrow" /></button>
       </div>
+      <p className="metadata">{context.model} · {context.goal}</p>
       <section className="analysis-block" aria-labelledby={id + '-summary'}>
         <h3 id={id + '-summary'}>Summary</h3>
         <p>{summary.overview}</p>
@@ -157,7 +199,7 @@ function AnalysisResult({ analysis, passages, cached, partial, coverage, modelNa
         {passages.map((passage) => <SourceReference key={passage.id} passage={passage} />)}
       </details>
 
-      <div ref={practice}><RecallPractice key={recallSessionKey(recall)} context={context} questions={recall} modelName={modelName}
+      <div ref={practice}><RecallPractice key={recallSessionKey(recall)} context={context} questions={recall} concepts={concepts} canCheck={canCheck} modelName={context.model}
         sourceById={sourceById} analysisPending={analyzing} /></div>
     </>
   );

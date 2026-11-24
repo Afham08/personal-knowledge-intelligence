@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 
-import type { AnalysisCache } from './analysis';
+import type { AnalysisCache, Review } from './analysis';
 import { isObject } from './provider';
 import type { Analysis } from './schema';
 
@@ -25,23 +25,35 @@ export async function updateAiSettings(change: Partial<AiSettings>): Promise<voi
   });
 }
 
-async function readCache(): Promise<Record<string, unknown>> {
+export async function readCache(): Promise<Record<string, unknown>> {
   const cache = (await browser.storage.local.get(CACHE_KEY))[CACHE_KEY];
   return isObject(cache) ? cache : {};
 }
 
 export const localAnalysisCache: AnalysisCache = {
   async get(key) {
-    return (await readCache())[key];
+    const entry = (await readCache())[key];
+    return isReview(entry) ? entry.analysis : entry;
   },
-  async set(key, analysis: Analysis) {
+  async set(key, analysis: Analysis, review?: Review) {
     await navigator.locks.request(CACHE_KEY, async () => {
       const entries = Object.entries(await readCache()).filter(([existing]) => existing !== key);
-      const next = Object.fromEntries([...entries.slice(-(MAX_RESULTS - 1)), [key, analysis]]);
+      const next = Object.fromEntries([...entries.slice(-(MAX_RESULTS - 1)), [key, review ?? analysis]]);
       await browser.storage.local.set({ [CACHE_KEY]: next });
     });
   },
 };
+
+export function isReview(entry: unknown): entry is Review {
+  return isObject(entry) && typeof entry.fingerprint === 'string' && typeof entry.goal === 'string' &&
+    isObject(entry.model) && typeof entry.model.name === 'string' && typeof entry.model.revision === 'string' &&
+    typeof entry.savedAt === 'number' && (entry.version === 4 || entry.version === 5) && isObject(entry.analysis);
+}
+
+export async function reviewsFor(fingerprint: string) {
+  return Object.values(await readCache()).filter(isReview).filter(r => r.fingerprint === fingerprint)
+    .sort((a, b) => b.savedAt - a.savedAt);
+}
 
 export function watchAiSettings(refresh: () => void): () => void {
   const listener: Parameters<typeof browser.storage.onChanged.addListener>[0] = (changes, area) => {

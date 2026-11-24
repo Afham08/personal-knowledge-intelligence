@@ -149,14 +149,14 @@ function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSt
           {article.truncated && <p>The saved text contains the first 100,000 characters.</p>}
           <details className="disclosure"><summary>Read saved text</summary><p className="article-text">{article.text}</p></details>
         </section>
-        {ai?.enabled && space && <>
+        {ai && space && <>
           {entry.memberships.length > 1 && <label>Study in Knowledge Space
             <select value={space.id} onChange={(event) => onStudySpace(event.target.value)}>
               {entry.memberships.map(({ space: member }) => <option key={member.id} value={member.id}>{member.name}</option>)}
             </select>
           </label>}
-          <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName])}
-            article={article} goal={space.learningGoal} modelName={ai.modelName}
+          <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName, ai.enabled])}
+            article={article} spaceId={space.id} enabled={ai.enabled} goal={space.learningGoal} modelName={ai.modelName}
             onSpaces={() => onSpaces(space.id)} onSettings={onSettings} />
         </>}
         {ai && !ai.enabled && <button type="button" onClick={onSettings}>Set up local AI for recall practice</button>}

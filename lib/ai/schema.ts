@@ -69,7 +69,7 @@ export function matchesSchema(value: unknown, schema: Schema): boolean {
   }
 }
 
-export function validateAnalysis(value: unknown, passages: Passage[]): Analysis {
+export function validateAnalysis(value: unknown, passages: Passage[], checkNovelty = false): Analysis {
   if (!matchesSchema(value, responseShape)) {
     throw new AiError('invalid', 'The JSON did not match the required article analysis schema.');
   }
@@ -90,6 +90,8 @@ export function validateAnalysis(value: unknown, passages: Passage[]): Analysis 
   if (new Set(questions).size !== questions.length) {
     throw new AiError('invalid', 'The model repeated recall questions.');
   }
+  const definitions = analysis.concepts.map(c => c.explanation.trim().replace(/\s+/gu, ' ').toLowerCase());
+  const referencedConcepts = analysis.concepts.map(concept => ({ ...concept, evidence: reference(concept.evidence) }));
   const answers = analysis.recall.map(({ answer }) => answer.trim().replace(/\s+/gu, ' ').replace(/[.!?]+$/u, ''));
   if (new Set(answers).size === 1) {
     throw new AiError('invalid', 'All recall questions had the same answer.');
@@ -98,7 +100,7 @@ export function validateAnalysis(value: unknown, passages: Passage[]): Analysis 
   return {
     relevance: { ...analysis.relevance, evidence: analysis.relevance.evidence.map(reference) },
     summary: analysis.summary,
-    concepts: analysis.concepts.map((concept) => ({ ...concept, evidence: reference(concept.evidence) })),
+    concepts: referencedConcepts.filter((_, i) => !checkNovelty || definitions.indexOf(definitions[i] ?? '') === i),
     recall: analysis.recall.map((item) => ({ ...item, evidence: reference(item.evidence) })),
   };
 }

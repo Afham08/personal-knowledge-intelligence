@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createSpace, updateLearningGoal } from '../../lib/library';
 import { MAX_LEARNING_GOAL, MAX_SPACE_NAME, type KnowledgeSpace, type SpaceArticle } from '../../lib/library-model';
 import { Icon } from './Icon';
+import { StudyProgress } from './StudyProgress';
 import { SaveStatus } from './SaveStatus';
 import { useDraft } from './useDraft';
 import { useAction } from './useAction';
@@ -73,6 +74,7 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
               <>
                 <p className="active-space-label">Selected space</p>
                 <LearningGoal key={space.id} space={space} />
+                <StudyProgress spaceId={space.id} />
               </>
             ) : <p className="space-goal">{space.learningGoal || 'No learning goal set.'}</p>}
             <div className="button-row">

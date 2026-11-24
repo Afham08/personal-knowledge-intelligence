@@ -1,6 +1,11 @@
 @layer base, components;
 
 @layer base {
+  .study-counts { display: flex; gap: .7rem; flex-wrap: wrap; margin-block: 1rem; }
+  .study-counts > div { flex: 1 1 5rem; }
+  .study-counts dt { font-size: .8rem; }
+  .study-counts dd { margin: .25rem 0; font-size: 1.25rem; font-weight: 650; }
+  input[type=file] { max-width: 100%; }
   :root {
     color-scheme: light;
     font-family: "Segoe UI", system-ui, sans-serif;

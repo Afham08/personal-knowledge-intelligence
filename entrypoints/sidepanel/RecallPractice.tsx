@@ -5,6 +5,8 @@ import { OLLAMA_ORIGIN_PERMISSION, ollamaProvider } from '../../lib/ai/ollama';
 import { AiError, type Passage } from '../../lib/ai/provider';
 import { checkRecallAnswer, MAX_RECALL_ANSWER_LENGTH } from '../../lib/ai/recall';
 import type { Analysis } from '../../lib/ai/schema';
+import { saveStudy, useStudy } from './useStudy';
+import { sameQuestion, studyKey, type StudyContext, type StudyRecord } from '../../lib/study';
 import { useDraft } from './useDraft';
 import { SourceReference } from './SourceReference';
 
@@ -17,8 +19,10 @@ type CheckState =
 type Draft = { revealed: boolean; check: CheckState };
 const emptyDraft: Draft = { revealed: false, check: { status: 'idle' } };
 
-export function RecallPractice({ context, questions, sourceById, modelName, analysisPending }: {
-  context: string;
+export function RecallPractice({ context, concepts, canCheck, questions, sourceById, modelName, analysisPending }: {
+  context: StudyContext;
+  concepts: Analysis['concepts'];
+  canCheck: boolean;
   questions: Analysis['recall'];
   sourceById: ReadonlyMap<string, Passage>;
   modelName: string;
@@ -37,11 +41,22 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
   const draft = drafts[index] ?? emptyDraft;
   const passage = question && sourceById.get(question.evidence);
   const heading = useId();
-  const answerDraft = useDraft('recall', context, question?.question ?? '', question?.answer ?? '', passage?.text ?? '');
-  const answer = answerDraft.value ?? '';
+  const { records, loaded, loadError } = useStudy();
+  const [saveError, setSaveError] = useState('');
+  const practice = { ...context, question: question?.question ?? '', expected: question?.answer ?? '', passage: passage?.text ?? '' };
+  const key = studyKey({ ...practice, kind: 'draft', answer: '' });
+  const saved = records[key];
+  const answerDraft = useDraft('recall', key);
+  const answer = answerDraft.value ?? (saved?.kind === 'draft' ? saved.answer : '');
+  const prior = Object.values(records).filter((r): r is Extract<StudyRecord, {kind: 'assessment'}> =>
+    r.kind === 'assessment' && r.answer === answer && sameQuestion(r, practice)).sort((a, b) => b.at - a.at)[0];
+  useEffect(() => {
+    if (saved?.kind === 'draft' && answerDraft.value === saved.answer) answerDraft.saved(saved.answer);
+  }, [saved, answerDraft.value]);
   if (!question) return null;
 
-  const checked = draft.check.status === 'ready' && draft.check.answer === answer;
+  const feedback = draft.check.status === 'ready' && draft.check.answer === answer ? draft.check.result : prior?.feedback;
+  const checked = Boolean(feedback);
 
   function update(changes: Partial<Draft>) {
     setDrafts((current) => ({
@@ -64,7 +79,7 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
   }
 
   async function check() {
-    if (checked || request.current || analysisPending || !question || !answer.trim()) return;
+    if (!canCheck || checked || request.current || analysisPending || !question || !answer.trim()) return;
     const controller = new AbortController();
     request.current = controller;
     update({ check: { status: 'checking' } });
@@ -80,7 +95,12 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
         provider: ollamaProvider,
         signal: controller.signal,
       });
-      if (request.current === controller) update({ check: { status: 'ready', result, answer } });
+      if (request.current === controller) {
+        update({ check: { status: 'ready', result, answer } });
+        await saveStudy({ ...practice, kind: 'assessment', id: crypto.randomUUID(), at: Date.now(), answer,
+          feedback: result, concepts: concepts.filter(c => c.evidence === question.evidence).map(c => c.term) })
+          .catch(() => setSaveError('Feedback is available here, but its history could not be saved.'));
+      }
     } catch (error) {
       if (request.current === controller) {
         update({
@@ -104,23 +124,29 @@ export function RecallPractice({ context, questions, sourceById, modelName, anal
       <label>
         {question.question}
         <textarea ref={input} value={answer} placeholder="Your answer" maxLength={MAX_RECALL_ANSWER_LENGTH}
-          disabled={checking} onChange={(event) => {
-            answerDraft.edit(event.target.value);
+          disabled={checking || !loaded} onChange={(event) => {
+            const next = event.target.value;
+            answerDraft.edit(next);
+            setSaveError('');
+            void saveStudy({ ...practice, kind: 'draft', answer: next }).catch(() =>
+              setSaveError('This answer could not be saved. Copy it before closing the panel.'));
             update({ check: { status: 'idle' } });
           }} />
       </label>
       <div className="button-row">
-        <button className="button-primary" type="button" disabled={checked || checking || analysisPending || !answer.trim()} onClick={() => void check()}>
+        <button className="button-primary" type="button" disabled={!canCheck || checked || checking || analysisPending || !answer.trim()} onClick={() => void check()}>
           {checked ? 'Answer checked' : 'Check my answer'}
         </button>
         {checking && <button type="button" onClick={cancel}>Cancel answer check</button>}
       </div>
       <p className="metadata">{analysisPending ? 'You can check answers when the article analysis finishes.'
         : checked ? 'Edit your answer to check a revision.' : 'Check your reasoning against the passage with local Ollama.'}</p>
+      {!canCheck && <p className="metadata">Enable local AI and select {modelName} to check this answer. You can reveal it offline.</p>}
+      {(saveError || loadError) && <p role="alert">{saveError || loadError}</p>}
       {checking && <p role="status">Checking your answer…</p>}
       {draft.check.status === 'cancelled' && <p role="status">Answer check cancelled. Your draft is still here.</p>}
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}
-      {draft.check.status === 'ready' && draft.check.answer === answer && <Feedback result={draft.check.result} />}
+      {feedback && <Feedback result={feedback} />}
       <div><button className="text-button" type="button" aria-expanded={draft.revealed}
         onClick={() => update({ revealed: !draft.revealed })}>
         {draft.revealed ? 'Hide expected answer' : 'Reveal expected answer'}

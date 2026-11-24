@@ -90,8 +90,8 @@ function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onS
         {state.status === 'loading' && <p role="status">Reading the current page…</p>}
         {state.status === 'error' && <p role="alert">{state.message}</p>}
       </section>
-      {state.status === 'ready' && ai?.enabled && space && (
-        <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName])} article={state.article}
+      {state.status === 'ready' && ai && space && (
+        <ArticleAnalysis key={JSON.stringify([space.id, space.learningGoal, ai.modelName, ai.enabled])} article={state.article} spaceId={space.id} enabled={ai.enabled}
           goal={space.learningGoal} modelName={ai.modelName} onSpaces={onSpaces} onSettings={onSettings} />
       )}
     </>

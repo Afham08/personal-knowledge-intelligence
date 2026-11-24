@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AiSettingsPanel, useAiSettings } from './AiSettings';
 import { GuideInSettings, WelcomeGuide } from './QuickStart';
+import { BackupPanel } from './BackupPanel';
 import { CurrentArticle } from './CurrentArticle';
 import { Icon } from './Icon';
 import { KnowledgeSpaces } from './KnowledgeSpaces';
@@ -182,11 +183,12 @@ export default function App() {
             <p>Manage local AI and see what PKI stores.</p></div>
           <GuideInSettings />
           <AiSettingsPanel state={ai} />
+          <BackupPanel />
           <section className="card" aria-labelledby="privacy-heading">
             <div className="card-heading"><span className="row-icon"><Icon name="shield" /></span>
               <h2 id="privacy-heading">Data on this device</h2></div>
             <p>PKI keeps saved articles, goals, and notes in this browser profile. You can use the library with AI turned off.</p>
-            <p>Analysis and answer checks run on demand through local Ollama. Recall drafts last for the current practice session.</p>
+            <p>Analysis and answer checks run on demand through local Ollama. Recall drafts and assessment history stay in this browser profile.</p>
           </section>
         </div>
       </main>

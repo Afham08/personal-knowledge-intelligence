@@ -15,7 +15,7 @@ const SYSTEM_PROMPT = [
   'For ideas, identify one or two distinct claims. For takeaways, explain what the reader can apply or notice using those claims.',
   'Choose one or two concepts actually explained by the passages. Give each its own mechanism, condition or contrast in one short sentence.',
   'Read all excerpts before stating a limitation. Draw on different passages where relevant. Keep each explanation to one point.',
-  'Keep actions and their stated reasons paired. Do not turn adjacent facts into a causal claim. Prefer fewer supported items to padding. Preserve names, notation and qualifications.',
+  'Give each concept a different explanation. If two definitions would repeat, return one concept. Keep actions and their stated reasons paired. Do not turn adjacent facts into a causal claim. Prefer fewer supported items to padding. Preserve names, notation and qualifications.',
   'Aim for 8 to 18 words per explanation or answer. Finish the sentence before adding another detail. When paraphrasing risks changing a technical detail, use the source wording.',
   'Write exactly three different recall questions. Test a reason, a relationship or a consequence where supported; otherwise ask about a stated detail. Answer each in one complete sentence using its cited passage.',
   'For each concept and recall answer, set evidence to the single passage ID that best supports it (for example "P1").',
@@ -162,7 +162,7 @@ export function createOllamaProvider({
         ? ' Use an exact supplied ID for every concept and answer. Choose claims supported by that passage.'
         : ' Match the schema exactly. Ask about different supported details or relationships so the three questions have distinct answers. Keep each field short.';
       const systemPrompt = retry ? SYSTEM_PROMPT + correction : SYSTEM_PROMPT;
-      return chat(model.name, systemPrompt, input, createAnalysisSchema(input.passages.map(({ id }) => id)),
+      return chat(model.name + ':local', systemPrompt, input, createAnalysisSchema(input.passages.map(({ id }) => id)),
         signal, { think: false, context: 8192, output: retry === 'truncated' ? 3072 : 2304, timeout: analysisTimeout });
     },
     async evaluate(model, input, signal) {

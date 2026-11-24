@@ -15,5 +15,10 @@ export async function getActiveTab(): Promise<ActiveTab | null> {
 }
 
 export function isWebUrl(url: string): boolean {
-  return url.startsWith('https://') || url.startsWith('http://');
+  try {
+    const parsed = new URL(url);
+    return ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password;
+  } catch {
+    return false;
+  }
 }

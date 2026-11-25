@@ -16,7 +16,7 @@ import { ollamaProvider } from '../../lib/ai/ollama';
 import { emptyKnowledge, knowledgeKey, revisionQueue, verdicts, type Verdict } from '../../lib/revision';
 import { useStudy } from './useStudy';
 
-function useKnowledge() {
+export function useKnowledge() {
   const [data, setData] = useState(emptyKnowledge);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -89,9 +89,9 @@ function Source({ chunk, open }: { chunk: Chunk; open: (id: string) => void }) {
       </summary>
       <p>{chunk.text}</p>
       <button onClick={() => open(chunk.articleId)}>Open saved article</button>{' '}
-      <a href={chunk.url} target="_blank" rel="noopener noreferrer">
+      {!chunk.url.startsWith('https://pki.invalid/pdf/') && <a href={chunk.url} target="_blank" rel="noopener noreferrer">
         Original page
-      </a>
+      </a>}
     </details>
   );
 }
@@ -231,6 +231,7 @@ export function SpaceChat({
             );
           })}
           {t.limitation && <p>{t.limitation}</p>}
+          {!t.claims.length && !!t.sources.length && <details><summary>Inspect retrieved material</summary>{t.sources.map(s=>{const c=chunks.find(c=>c.id===s.id&&c.text===s.text);return c&&<Source key={s.id} chunk={c} open={open}/>;})}</details>}
           <small>{t.model} · Inspect the cited text to check the interpretation.</small>
         </details>
       ))}

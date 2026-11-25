@@ -25,11 +25,14 @@ class Assets(HTMLParser):
             required.add(attrs["src" if tag == "script" else "href"].lstrip("/"))
 
 
-require(manifest["version_name"] == version and manifest["version"] == "0.1.0.1", "Version mismatch")
+require(manifest["version_name"] == version and manifest["version"] == version.replace("-beta.", "."), "Version mismatch")
 require(manifest["manifest_version"] == 3 and "content_security_policy" in manifest, "Missing MV3 production policy")
-required = {"manifest.json", "extract-article.js", "THIRD-PARTY-NOTICES.txt",
+required = {"manifest.json", "extract-article.js", "annotate.js", "THIRD-PARTY-NOTICES.txt",
             manifest["background"]["service_worker"], manifest["side_panel"]["default_path"]}
 Assets().feed((build / manifest["side_panel"]["default_path"]).read_text(encoding="utf8"))
+workers = list(build.glob("assets/pdf.worker.min-*.mjs"))
+require(len(workers) == 1, "Missing bundled PDF worker")
+required.add(workers[0].relative_to(build).as_posix())
 for size in (16, 32, 48, 128):
     icon = manifest["icons"][str(size)]
     header = (build / icon).read_bytes()

@@ -11,12 +11,14 @@ if (!process.env.PKI_TEST_BROWSER)
 const root = await mkdtemp(path.join(tmpdir(), 'pki-shared-reader-')),
   ext = path.join(root, 'extension'),
   profile = path.join(root, 'profile');
-await cp('.output/chrome-mv3', ext, { recursive: true });
+await cp(process.env.PKI_PACKAGED_DIR || '.output/chrome-mv3', ext, { recursive: true });
 const manifest = path.join(ext, 'manifest.json'),
   data = JSON.parse(await readFile(manifest));
+if (!process.env.PKI_PACKAGED_DIR) {
 data.host_permissions = ['http://127.0.0.1/*', 'http://127.0.0.1:11434/*'];
 data.optional_host_permissions = [];
 await writeFile(manifest, JSON.stringify(data));
+}
 const server = createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.end(
@@ -60,11 +62,18 @@ try {
       )
     ).split('\n')[0],
     base = 'http://127.0.0.1:' + port;
-  const worker = await until(async () =>
-    (await (await fetch(base + '/json/list')).json()).find(
-      (t) => t.type === 'service_worker' && t.url.endsWith('/background.js'),
-    ),
-  );
+  const worker = await until(async () => {
+    const targets=await (await fetch(base+'/json/list')).json();
+    for(const t of targets.filter(t=>t.type==='service_worker'&&t.url.endsWith('/background.js'))){
+      const sock=new WebSocket(t.webSocketDebuggerUrl);
+      try{
+        await new Promise((resolve,reject)=>{sock.onopen=resolve;sock.onerror=reject;});
+        const name=new Promise(resolve=>{sock.onmessage=e=>{const m=JSON.parse(e.data);if(m.id===1)resolve(m.result?.result?.value);};});
+        sock.send(JSON.stringify({id:1,method:'Runtime.evaluate',params:{expression:'chrome.runtime.getManifest().name',returnByValue:true}}));
+        if(await name==='Personal Knowledge Intelligence')return t;
+      }finally{sock.close();}
+    }
+  });
   const panel = worker.url.replace('background.js', 'sidepanel.html');
   const target = await (
     await fetch(base + '/json/new?' + encodeURIComponent(panel), {
@@ -112,7 +121,14 @@ try {
         ";s.dispatchEvent(new Event('change',{bubbles:true}))})()",
     );
   }
-  await until(() => run("!!document.querySelector('nav')"));
+  await until(() => run("!!document.querySelector('nav')")).catch(async e=>{throw Error(e.message+' '+await run("JSON.stringify([location.href,document.title,document.body.innerText.slice(0,350)])"));});
+  if(process.env.PKI_PACKAGED_DIR){
+    await click('Settings');
+    assert.equal(await run("chrome.runtime.getManifest().version_name"),'0.3.0-beta.1');
+    assert.equal(await run("chrome.runtime.getManifest().host_permissions"),undefined);
+    assert.equal(await run("document.body.innerText.includes('Enable local AI')"),true);
+    console.log('Unmodified packaged extension installed and loaded Settings with AI disabled.');
+  }else{
   await run(
     'chrome.storage.local.set(' +
       JSON.stringify({
@@ -347,13 +363,13 @@ try {
   assert.equal(exported.knowledge.ratings.length, 1);
   await run('chrome.storage.local.clear()');
   await send('Page.reload');
-  await until(() => run("!!document.querySelector('nav')"));
+  await until(() => run("!!document.querySelector('nav')")).catch(async e=>{throw Error(e.message+' '+await run("JSON.stringify([location.href,document.title,document.body.innerText.slice(0,350)])"));});
   await click('Settings');
   async function restore() {
     const doc = await send('DOM.getDocument');
     const node = await send('DOM.querySelector', {
       nodeId: doc.root.nodeId,
-      selector: 'input[type=file]',
+      selector: '[data-view=settings] input[type=file]',
     });
     await send('DOM.setFileInputFiles', { nodeId: node.nodeId, files: [file] });
   }
@@ -367,9 +383,55 @@ try {
   await until(() =>
     run("document.body.innerText.includes('0 records restored')"),
   );
+  await click('Home');
+  async function disclose(label){
+    await run("(()=>{const s=[...document.querySelectorAll('summary')].find(s=>s.textContent.trim()==="+JSON.stringify(label)+"&&s.checkVisibility());if(!s)throw Error('Missing disclosure');s.parentElement.open=true})()");
+  }
+  await disclose('Highlights and related knowledge');
+  await run("chrome.tabs.query({active:true,currentWindow:true}).then(([t])=>chrome.scripting.executeScript({target:{tabId:t.id},func:()=>{const text=document.querySelector('article p').firstChild;const r=new Range();r.setStart(text,0);r.setEnd(text,18);getSelection().removeAllRanges();getSelection().addRange(r)}}))");
+  await click('Save selected text');
+  await until(()=>run("document.body.innerText.includes('1 located')"));
+  await click('Find related knowledge');
+  await until(()=>run("document.body.innerText.includes('related passages.')"));
+  await click('Settings');await select('[data-view=settings] label.card select','dark');
+  await until(()=>run("document.documentElement.dataset.theme==='dark'"));
+  await disclose('Storage and Markdown export');await click('Export Markdown ZIP');
+  await until(async()=>(await readdir(root)).includes('PKI-Markdown.zip'));
+  await click('Library');
+  if(!await run("!![...document.querySelectorAll('summary')].find(s=>s.checkVisibility()&&s.textContent==='Import local PDF')")){
+    await click('Library list');
+  }
+  await disclose('Import local PDF');
+  const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 500] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+  const content='BT /F1 14 Tf 40 440 Td (Field report on orchard pollination) Tj ET';
+  objects.push('<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream');
+  let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((o,i)=>{offsets.push(pdf.length);pdf+=(i+1)+' 0 obj\n'+o+'\nendobj\n';});
+  const xref=pdf.length;pdf+='xref\n0 '+offsets.length+'\n0000000000 65535 f \n'+offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+'trailer\n<< /Size '+offsets.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
+  const pdfPath=path.join(root,'Field report.pdf');await writeFile(pdfPath,pdf);
+  const dom=await send('DOM.getDocument');const input=await send('DOM.querySelector',{nodeId:dom.root.nodeId,selector:'[data-view=library] input[type=file]'});
+  const invalid=path.join(root,'damaged.pdf');await writeFile(invalid,'this file contains no PDF');
+  await send('DOM.setFileInputFiles',{nodeId:input.nodeId,files:[invalid]});
+  await until(()=>run("!!document.querySelector('[data-view=library] [role=alert]')"));
+  await send('DOM.setFileInputFiles',{nodeId:input.nodeId,files:[pdfPath]});
+  await until(()=>run("chrome.storage.local.get('pki.library').then(d=>d['pki.library'].articles.some(a=>a.pages?.[0]?.page===1&&a.text.includes('orchard pollination')))"));
+  await click('Spaces');await disclose('Knowledge graph');await until(()=>run("!!document.querySelector('.knowledge-graph circle')"));
+  if(process.env.PKI_GRAPH_SCREENSHOT){
+    await send('Emulation.setDeviceMetricsOverride',{width:396,height:800,deviceScaleFactor:1,mobile:false});
+    await run("document.querySelector('.knowledge-graph').closest('details').scrollIntoView()");
+    const capture=await send('Page.captureScreenshot',{format:'png'});
+    await writeFile(process.env.PKI_GRAPH_SCREENSHOT,Buffer.from(capture.data,'base64'));
+  }
+  await click('Settings');await disclose('Storage and Markdown export');
+  const exportedPdfId=await run("chrome.storage.local.get('pki.library').then(d=>d['pki.library'].articles.find(a=>a.pages).id)");
+  await select('[data-view=settings] details.card label:nth-of-type(2) select',exportedPdfId);
+  await run("window.confirm=()=>true");
+  await click('Delete selected resource');
+  await until(()=>run("chrome.storage.local.get('pki.library').then(d=>!d['pki.library'].articles.some(a=>a.pages)&&d['pki.library'].links.every(l=>d['pki.library'].articles.some(a=>a.id===l.articleId)))"));
+  console.log('Browser passed real selection capture and CSS restoration, related search, appearance, Markdown ZIP export, bundled PDF extraction and graph rendering.');
   console.log(
     'Browser fixture passed: capture, save, analyze, recall, daily revision, multi-article insights and chat, incremental indexing, offline reopen and backup restore.',
   );
+  }
 } finally {
   ws?.close();
   child.kill();

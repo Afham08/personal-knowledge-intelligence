@@ -1,4 +1,9 @@
 @layer base, components;
+.knowledge-graph {width:100%;height:220px;touch-action:none;background:var(--tint);border-radius:8px}
+:root[data-theme=dark] {color-scheme:dark;color:#efeffa;background:#171824;--surface:#242635;--ink:#efeffa;--muted:#c4c7dc;--border:#515468;--accent:#c6bbff;--accent-strong:#c6bbff;--tint:#343247}
+:root[data-theme=dark] :is(input,textarea,select,button,.app-header,.main-nav,.card,.list-row){background:var(--surface);color:var(--ink)}
+:root[data-theme=dark] :is(.button-primary,.badge,.brand-mark,.row-icon,pre,blockquote,.feedback-card,.analysis-block,.practice-card,.ai-command,.capture-card,.disclosure){background:var(--tint);color:var(--ink)}
+
 
 @layer base {
   .study-counts { display: flex; gap: .7rem; flex-wrap: wrap; margin-block: 1rem; }

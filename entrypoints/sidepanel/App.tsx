@@ -4,6 +4,9 @@ import { AiSettingsPanel, useAiSettings } from './AiSettings';
 import { GuideInSettings, WelcomeGuide } from './QuickStart';
 import { BackupPanel } from './BackupPanel';
 import { CurrentArticle } from './CurrentArticle';
+import {Management,Appearance} from './Management';
+import {Graph} from './Graph';
+import {PageTools,ImportPdf,HighlightList} from './Resources';
 import { DailyReview, SpaceChat, PassageSearch, IndexSettings } from './Intelligence';
 import { Icon } from './Icon';
 import { KnowledgeSpaces } from './KnowledgeSpaces';
@@ -116,6 +119,7 @@ export default function App() {
             ai={ai.status === 'ready' ? ai.settings : undefined}
             onOpenSaved={(id) => openArticle(id, 'home', selected?.id)} onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
+          {library && <PageTools library={library} space={selected?.id??''} open={id=>openArticle(id,'home')}/>}
           {library && <DailyReview />}
           <WelcomeGuide onDismiss={() => {
             const home = main.current?.querySelector<HTMLElement>('[data-view="home"]:not([hidden])');
@@ -167,6 +171,7 @@ export default function App() {
             <p>Organize reading around the things you want to learn.</p></div>
           {library && <KnowledgeSpaces spaces={library.spaces} selected={selected} onSelect={setSpaceId}
             onViewArticles={showSpaceArticles} links={library.links} />}
+          {route.view==='spaces' && library && <Graph library={library} open={id=>openArticle(id,'library')}/>}
           {route.view==='spaces' && library && selected && <><DailyReview key={'review'+selected.id} space={selected.id}/><SpaceChat key={selected.id+(ai.status==='ready'&&ai.settings.enabled?ai.settings.modelName:'')} library={library} space={selected.id} model={ai.status==='ready'&&ai.settings.enabled?ai.settings.modelName:''} open={id=>openArticle(id,'library',selected.id)}/></>}
         </div>
 
@@ -179,16 +184,19 @@ export default function App() {
             onList={() => { setReader(undefined); navigate({ view: 'library' }); }}
             onBack={() => { setReader(undefined); navigate(backFromArticle(route)); }} />}
           {library && route.view==='library' && !reader && <PassageSearch key={libraryFilter} library={library} space={libraryFilter} open={id=>openArticle(id,'library')}/>}
+          {library && route.view==='library' && !reader && <><ImportPdf library={library} space={libraryFilter||selected?.id||''} open={id=>openArticle(id,'library',libraryFilter||selected?.id)}/><HighlightList library={library} space={libraryFilter} open={id=>openArticle(id,'library')}/></>}
           {!library && <div className="page-heading"><h1 data-page-heading tabIndex={-1}>Library</h1></div>}
         </div>
 
         <div data-view="settings" hidden={route.view !== 'settings'} className="page">
           <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Settings</h1>
             <p>Manage local AI and see what PKI stores.</p></div>
+          <Appearance/>
           <GuideInSettings />
           <AiSettingsPanel state={ai} />
           {route.view==='settings' && <IndexSettings/>}
           <BackupPanel />
+          {route.view==='settings'&&library&&<Management library={library}/>}
           <section className="card" aria-labelledby="privacy-heading">
             <div className="card-heading"><span className="row-icon"><Icon name="shield" /></span>
               <h2 id="privacy-heading">Data on this device</h2></div>

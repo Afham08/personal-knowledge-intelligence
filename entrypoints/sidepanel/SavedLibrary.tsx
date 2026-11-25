@@ -143,11 +143,11 @@ function ArticleDetail({ entry, backTo, onBack, onList, ai, preferredSpace, onSt
       {article && entry && <>
         <section className="card" aria-labelledby="saved-reading">
           <div className="section-heading"><h2 id="saved-reading">Reading</h2>
-            <a className="text-button" href={article.url} target="_blank" rel="noopener noreferrer">
+            {!article.pages && <a className="text-button" href={article.url} target="_blank" rel="noopener noreferrer">
               Open original <Icon name="external" />
-            </a></div>
+            </a>}</div>
           {article.truncated && <p>The saved text contains the first 100,000 characters.</p>}
-          <details className="disclosure"><summary>Read saved text</summary><p className="article-text">{article.text}</p></details>
+          <details className="disclosure"><summary>Read saved text</summary><p className="article-text">{article.pages?article.pages.map((p,i)=>'Page '+p.page+'\n'+article.text.slice(p.start,article.pages?.[i+1]?.start)).join('\n'):article.text}</p></details>
         </section>
         {ai && space && <>
           {entry.memberships.length > 1 && <label>Study in Knowledge Space

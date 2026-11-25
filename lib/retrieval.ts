@@ -1,3 +1,4 @@
+import {pagesOf} from './documents.ts';
 import type { Library } from './library-model';
 import { isObject } from './ai/provider.ts';
 
@@ -21,22 +22,31 @@ export function chunksFor(library: Library, space?: string): Chunk[] {
   const chunks: Chunk[] = [];
   for (const a of library.articles) {
     if (!allowed.has(a.id)) continue;
+    const segments = a.pages?pagesOf(a).map(p=>({start:p.start,text:p.text,title:a.title+' · page '+p.page,key:''})):
+      [{start:0,text:a.text,title:a.title,key:''}];
+    for(const link of library.links.filter(l=>l.articleId===a.id&&(!space||space===l.spaceId)&&l.note)){
+      segments.push({start:0,text:link.note,title:a.title+' · personal note',key:'n'+encodeURIComponent(link.spaceId)+'/'});
+    }
+    for(const h of (library.highlights??[]).filter(h=>h.articleId===a.id&&(!space||space===h.spaceId))){
+      segments.push({start:0,text:h.quote+(h.note?'\nAnnotation: '+h.note:''),title:a.title+' · highlight',key:'h'+h.id+'/'});
+    }
+    for(const seg of segments){
     let start = 0;
-    while (start < a.text.length) {
-      const window = a.text.slice(start, start + 700);
+    while (start < seg.text.length) {
+      const window = seg.text.slice(start, start + 700);
       let length = window.length;
-      if (start + length < a.text.length) {
+      if (start + length < seg.text.length) {
         const breaks = [...window.matchAll(/[.!?]\s+|\n+/gu)];
         const boundary = breaks.at(-1);
         const pos = boundary ? boundary.index + boundary[0].length : 0;
         const space = window.lastIndexOf(' ') + 1;
         length = pos >= 260 ? pos : space > 0 ? space : length;
       }
-      const text = a.text.slice(start, start + length);
+      const text = seg.text.slice(start, start + length);
       if (text.trim())
-        chunks.push({ id: a.id + '/' + start, articleId: a.id, title: a.title, url: a.url, start, text });
+        chunks.push({ id:a.id+'/'+seg.key+(start+seg.start),articleId:a.id,title:seg.title,url:a.url,start:start+seg.start,text });
       start += length;
-    }
+    }}
   }
   return chunks;
 }

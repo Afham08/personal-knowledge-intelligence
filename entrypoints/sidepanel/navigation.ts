@@ -54,6 +54,7 @@ export function homeReading(entries: LibraryEntry[], openId?: string): LibraryEn
 }
 
 export function articleHost(url: string): string {
+  if(url.startsWith('https://pki.invalid/pdf/'))return 'Local PDF';
   try {
     return new URL(url).hostname.replace(/^www\./i, '');
   } catch {

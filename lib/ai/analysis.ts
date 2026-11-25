@@ -1,3 +1,4 @@
+import {pagesOf} from '../documents.ts';
 import type { ExtractedArticle } from '../article';
 import { AiError, checkCancelled, type AiModel, type AiProvider, type AnalysisInput, type AnalysisRetry } from './provider.ts';
 import { validateAnalysis, type Analysis } from './schema.ts';
@@ -19,7 +20,7 @@ export type Review = {
 };
 
 export function articleFingerprint(article: ExtractedArticle) {
-  return cacheKey([article.title, article.text, article.truncated]);
+  return cacheKey(article.pages ? [article.title,article.text,article.truncated,article.pages] : [article.title, article.text, article.truncated]);
 }
 
 export async function reopenReview(article: ExtractedArticle, review: Review) {
@@ -31,19 +32,19 @@ export async function reopenReview(article: ExtractedArticle, review: Review) {
     cached: true, saveFailed: false, model: review.model, goal: review.goal };
 }
 
-function splitPassages(text: string): string[] {
+function splitPassages(text: string, budget=PASSAGE_LENGTH): string[] {
   const normalized = text.replace(/\s+/gu, ' ').trim();
   const chunks: string[] = [];
   let start = 0;
   for (const { index, segment } of sentences.segment(normalized)) {
     const end = index + segment.length;
-    if (end - start > PASSAGE_LENGTH && index > start) {
+    if (end - start > budget && index > start) {
       chunks.push(normalized.slice(start, index).trim());
       start = index;
     }
     // An individual sentence can exceed the budget. Prefer its last full word.
-    while (end - start > PASSAGE_LENGTH) {
-      const limit = start + PASSAGE_LENGTH;
+    while (end - start > budget) {
+      const limit = start + budget;
       const wordBoundary = normalized.lastIndexOf(' ', limit);
       const lastCodeUnit = normalized.charCodeAt(limit - 1);
       const splitsSurrogate = lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff;
@@ -108,7 +109,7 @@ export function prepareInput(article: ExtractedArticle, learningGoal: string, ve
   const goal = learningGoal.trim().slice(0, 600);
   if (!goal) throw new AiError('invalid', 'Set a learning goal for the selected Knowledge Space first.');
 
-  const chunks = splitPassages(article.text);
+  const chunks = article.pages ? pagesOf(article).flatMap(p=>splitPassages(p.text,380).map(t=>'[Page '+p.page+'] '+t)) : splitPassages(article.text);
   if (!chunks.length) throw new AiError('invalid', 'Extract a readable article first.');
 
   const sampled = selectPassages(chunks, goal, article.title, version);

@@ -81,7 +81,7 @@ export function validKnowledge(v: unknown): v is Knowledge {
     if (
       !t.sources.every(
         (s) =>
-          isObject(s) && typeof s.id === 'string' && /^[0-9a-f]{64}\/\d+$/.test(s.id) && str(s.text, 700),
+          isObject(s) && typeof s.id === 'string' && /^[0-9a-f]{64}\/(?:[nh][^/]{1,400}\/)?\d+$/.test(s.id) && str(s.text, 700),
       )
     )
       return false;

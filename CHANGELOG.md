@@ -1,5 +1,22 @@
 # Release notes
 
+## 0.3.0-beta.1 — final portfolio beta
+
+- Added native selection highlighting, context-based restoration, editable annotations and explicit related-resource discovery using temporary page access.
+- Added local PDF import, bounded text extraction, page-aware analysis and retrieval, and graph exploration of saved resources and study concepts.
+- Added Markdown and linked ZIP export, storage category estimates, resource deletion, analysis-cache clearing, a confirmed profile reset and persisted appearance preferences.
+- Existing libraries and v1/v2 backups are accepted. The library uses optional annotation and page fields. Keep backups made with this version for restoring those fields.
+- Verification: TypeScript and 66 automated tests passed. Brave and Chrome for Testing exercised real capture, highlighting, PDF import, graph rendering, exports and restore with fixture AI. The untouched ZIP loaded in both. Both installed Qwen models generated article analysis and recall feedback; the smaller model sometimes abstained on cross-source synthesis. Embeddings were tested with fixtures because nomic-embed-text was not installed.
+- Chromium version 0.3.0.1. Upgrade by reloading the existing unpacked location. OCR, continuous page monitoring, cloud sync and store publication are outside this release.
+
+## 0.2.0-beta.1 — connected learning
+
+- Search saved passages locally by keyword or combine keyword and vector similarity using the optional nomic-embed-text index.
+- Ask questions across a selected Knowledge Space and inspect the source passages. Explore recurring concepts, related articles, complementary explanations, potential contradictions and suggested study topics.
+- Review due questions offline, adjust AI or self-assessments, and see upcoming revision dates per space. Previous attempts remain in history.
+- Version 2 backups include chats, revision cards and rating history. Existing version 1 backups and local libraries remain compatible. Derived embedding vectors can be rebuilt.
+- No new permissions. Numeric Chromium version 0.2.0.1. Upgrade by replacing the unpacked files in the same location and reloading the extension.
+
 ## 0.1.0-beta.1 — public beta candidate
 
 - Capture a webpage into a goal-based Knowledge Space, share an article across spaces and keep separate notes.

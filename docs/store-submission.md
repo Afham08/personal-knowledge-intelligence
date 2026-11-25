@@ -4,19 +4,19 @@
 
 **Short description** — Save articles around learning goals, study source-linked summaries, and practice recall privately with optional local AI.
 
-**Full description** — Turn the articles you choose into a personal study library. Organize reading into Knowledge Spaces, set a goal for each space, and keep your own notes. Connect Ollama on your computer to generate summaries, relevance feedback, key concepts and active recall questions. Inspect the excerpts behind a reference, write an answer and request formative feedback. Reopen saved analyses offline, review study activity and export your library and practice records. An account and paid AI service are unnecessary. AI features require a compatible local Ollama installation and downloaded model.
+**Full description** — Turn the articles you choose into a personal study library. Organize reading into Knowledge Spaces, set a goal for each space, and keep your own notes. Connect Ollama on your computer to generate summaries, relevance feedback, key concepts and active recall questions. Inspect the excerpts behind a reference, write an answer and request formative feedback. Reopen saved analyses offline, practice due questions, search passages, ask questions across a Knowledge Space, and export your library and practice records. Semantic search uses an optional local embedding model. An account and paid AI service are unnecessary. AI features require a compatible local Ollama installation and downloaded model.
 
-**Single purpose** — Help readers study selected web articles against personal learning goals.
+**Single purpose** — Help readers collect and study selected articles, annotations and local PDF text against personal learning goals.
 
 | Permission | User-facing purpose |
 | --- | --- |
 | activeTab | Temporary access to the page chosen with the toolbar action. |
-| scripting | Inject the bundled extractor on explicit capture. |
+| scripting | Run bundled extraction and native selection highlighting only on user-requested tabs. |
 | sidePanel | Display the study workflow alongside the page. |
 | storage | Retain the library, goals, drafts, progress, preferences and validated reviews in the browser profile. |
 | Optional HTTP loopback host | Connect only to local Ollama when enabled. The provider and production connection policy restrict requests to 127.0.0.1 port 11434. |
 
-**Privacy disclosure worksheet.** PKI handles website content, saved article URLs, user-written notes, goals and recall answers locally. AI requests go to the user's loopback service. The developer receives no user data. There are no accounts, analytics, ads, remote scripts or cloud inference endpoints. Use the policy to answer the dashboard's current questions accurately and review the dashboard definitions before certification.
+**Privacy disclosure worksheet.** PKI handles website content, saved article URLs, user-written notes, goals and recall answers locally. AI requests, including optional passage indexing, search queries and space chat, go to the user's loopback service. The developer receives no user data. There are no accounts, analytics, ads, remote scripts or cloud inference endpoints. Use the policy to answer the dashboard's current questions accurately and review the dashboard definitions before certification.
 
 ## Owner checklist
 

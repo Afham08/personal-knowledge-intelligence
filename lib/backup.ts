@@ -1,3 +1,5 @@
+import {isDocument} from './documents.ts';
+import { colors, type Annotation } from './anchors.ts';
 import { emptyKnowledge, knowledgeKey, validKnowledge, type Knowledge } from './revision.ts';
 import { emptyLibrary, identifyArticle, type Library } from './library-model.ts';
 import { createAnalysisSchema, matchesSchema } from './ai/schema.ts';
@@ -32,7 +34,15 @@ export function validateLibrary(v: unknown): Library {
   });
   const articles = v.articles.map(a => {
     requireValue(isObject(a) && string(a.id, 64) && webUrl(a.url) && string(a.title, 300) && string(a.text, 100000) && typeof a.truncated === 'boolean');
-    return { id: a.id, url: a.url, title: a.title, text: a.text, truncated: a.truncated };
+    const value={ id:a.id,url:a.url,title:a.title,text:a.text,truncated:a.truncated };
+    if(a.pages===undefined)return value;
+    requireValue(isDocument(a.url)&&Array.isArray(a.pages)&&a.pages.length>0&&a.pages.length<=500);
+    let last=-1,lastPage=0;
+    const pages=a.pages.map(p=>{
+      requireValue(isObject(p)&&Number.isInteger(p.page)&&Number(p.page)>lastPage&&Number(p.page)<=500&&Number.isInteger(p.start)&&Number(p.start)>last&&Number(p.start)<value.text.length);
+      last=Number(p.start);lastPage=Number(p.page);return {page:lastPage,start:last};
+    });
+    requireValue(pages[0]?.start===0);return {...value,pages};
   });
   const spaceIds = new Set(spaces.map(s => s.id));
   const articleIds = new Set(articles.map(a => a.id));
@@ -41,7 +51,16 @@ export function validateLibrary(v: unknown): Library {
     return { spaceId: l.spaceId, articleId: l.articleId, note: l.note };
   });
   unique(spaces, s => s.id); unique(articles, a => a.id); unique(links, linkKey);
-  return { version: 1, spaces, articles, links };
+  let highlights: Annotation[]|undefined;
+  if(v.highlights!==undefined){
+    requireValue(Array.isArray(v.highlights));
+    highlights=v.highlights.map(h=>{
+      requireValue(isObject(h)&&typeof h.id==='string'&&/^[a-f0-9-]{36}$/.test(h.id)&&typeof h.spaceId==='string'&&typeof h.articleId==='string'&&links.some(l=>l.spaceId===h.spaceId&&l.articleId===h.articleId)&&string(h.quote,4000)&&string(h.note,4000,true)&&string(h.prefix,48,true)&&string(h.suffix,48,true)&&Number.isSafeInteger(h.start)&&Number(h.start)>=0&&colors.includes(h.color as Annotation['color']));
+      return {id:h.id,articleId:h.articleId,spaceId:h.spaceId,quote:h.quote,start:Number(h.start),prefix:h.prefix,suffix:h.suffix,color:h.color as Annotation['color'],note:h.note};
+    });
+    unique(highlights,h=>h.id);
+  }
+  return { version: 1, spaces, articles, links,...(highlights?{highlights}:{}) };
 }
 function linkKey(l: Library['links'][number]) { return JSON.stringify([l.spaceId, l.articleId]); }
 export function validStudy(r: unknown): r is StudyRecord {
@@ -105,6 +124,7 @@ export function mergeBackup(local: Backup, incoming: Backup) {
     spaces: merge(local.library.spaces, incoming.library.spaces, s => s.id),
     articles: merge(local.library.articles, incoming.library.articles, a => a.id),
     links: merge(local.library.links, incoming.library.links, linkKey) };
+  if(local.library.highlights||incoming.library.highlights)library.highlights=merge(local.library.highlights??[],incoming.library.highlights??[],h=>h.id);
   const study = merge(local.study, incoming.study, studyKey);
   const cache = Object.fromEntries(merge(Object.entries(local.cache), Object.entries(incoming.cache), ([key]) => key, 30));
   const knowledge:Knowledge={

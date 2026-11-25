@@ -1,3 +1,4 @@
+import type { Annotation } from './anchors';
 import type { ExtractedArticle } from './article';
 
 export type KnowledgeSpace = { id: string; name: string; learningGoal: string };
@@ -9,6 +10,7 @@ export type Library = {
   spaces: KnowledgeSpace[];
   articles: SavedArticle[];
   links: SpaceArticle[];
+  highlights?: Annotation[];
 };
 
 export const emptyLibrary: Library = { version: 1, spaces: [], articles: [], links: [] };

@@ -5,6 +5,7 @@ export type ExtractedArticle = {
   title: string;
   text: string;
   truncated: boolean;
+  pages?: {page:number;start:number}[];
 };
 
 export type ExtractionResult =

@@ -27,7 +27,7 @@ export function watchLibrary(refresh: () => void): () => void {
   return () => browser.storage.onChanged.removeListener(listener);
 }
 
-async function updateLibrary(update: (current: Library) => Library): Promise<boolean> {
+export async function updateLibrary(update: (current: Library) => Library): Promise<boolean> {
   // One writer at a time across side panels, with all related records committed in one set().
   return await navigator.locks.request(STORAGE_KEY, async () => {
     const current = await readLibrary();

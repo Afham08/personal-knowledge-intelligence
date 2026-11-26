@@ -8,13 +8,13 @@ if (!process.env.PKI_TEST_BROWSER)
   throw new Error(
     'Set PKI_TEST_BROWSER to the Brave or Chrome for Testing executable.',
   );
-const root = await mkdtemp(path.join(tmpdir(), 'pki-shared-reader-')),
+const root = process.env.PKI_EDUCATION_REOPEN || await mkdtemp(path.join(tmpdir(), 'pki-shared-reader-')),
   ext = path.join(root, 'extension'),
   profile = path.join(root, 'profile');
-await cp(process.env.PKI_PACKAGED_DIR || '.output/chrome-mv3', ext, { recursive: true });
+if(!process.env.PKI_EDUCATION_REOPEN)await cp(process.env.PKI_PACKAGED_DIR || '.output/chrome-mv3', ext, { recursive: true });
 const manifest = path.join(ext, 'manifest.json'),
   data = JSON.parse(await readFile(manifest));
-if (!process.env.PKI_PACKAGED_DIR) {
+if (!process.env.PKI_PACKAGED_DIR && !process.env.PKI_EDUCATION_TEST) {
 data.host_permissions = ['http://127.0.0.1/*', 'http://127.0.0.1:11434/*'];
 data.optional_host_permissions = [];
 await writeFile(manifest, JSON.stringify(data));
@@ -55,11 +55,7 @@ async function until(f) {
 }
 try {
   const port = (
-      await until(() =>
-        readFile(path.join(profile, 'DevToolsActivePort'), 'utf8').catch(
-          () => '',
-        ),
-      )
+      await until(async () => {try {const info=await readFile(path.join(profile,'DevToolsActivePort'),'utf8');await fetch('http://127.0.0.1:'+info.split('\n')[0]+'/json/version');return info;} catch {return '';}})
     ).split('\n')[0],
     base = 'http://127.0.0.1:' + port;
   const worker = await until(async () => {
@@ -88,6 +84,15 @@ try {
     const m = JSON.parse(e.data);
     calls.get(m.id)?.(m);
   };
+  async function send(method, params = {}) {
+    const n = ++id,
+      p = new Promise((r) => calls.set(n, r));
+    ws.send(JSON.stringify({ id: n, method, params }));
+    const m = await p;
+    calls.delete(n);
+    if (m.error) throw Error(JSON.stringify(m.error));
+    return m.result;
+  }
   async function run(expression) {
     const n = ++id,
       p = new Promise((r) => calls.set(n, r));
@@ -122,9 +127,17 @@ try {
     );
   }
   await until(() => run("!!document.querySelector('nav')")).catch(async e=>{throw Error(e.message+' '+await run("JSON.stringify([location.href,document.title,document.body.innerText.slice(0,350)])"));});
-  if(process.env.PKI_PACKAGED_DIR){
+  if(process.env.PKI_EDUCATION_TEST){
+    const {checkEducation}=await import('./test-education.mjs');
+    await checkEducation({run,click,until,send,reopen:!!process.env.PKI_EDUCATION_REOPEN});
+    if(!process.env.PKI_EDUCATION_REOPEN){
+      const closed=new Promise(resolve=>child.once('exit',resolve));void send('Browser.close');await closed;
+      const next=spawn(process.execPath,['scripts/test-browser.mjs'],{env:{...process.env,PKI_EDUCATION_REOPEN:root},stdio:'inherit',windowsHide:true});
+      assert.equal(await new Promise(resolve=>next.once('exit',resolve)),0);
+    }
+  }else if(process.env.PKI_PACKAGED_DIR){
     await click('Settings');
-    assert.equal(await run("chrome.runtime.getManifest().version_name"),'0.3.0-beta.1');
+    assert.equal(await run("chrome.runtime.getManifest().version_name"),'0.3.0-beta.2');
     assert.equal(await run("chrome.runtime.getManifest().host_permissions"),undefined);
     assert.equal(await run("document.body.innerText.includes('Enable local AI')"),true);
     console.log('Unmodified packaged extension installed and loaded Settings with AI disabled.');
@@ -154,15 +167,6 @@ try {
   await click('Save article');
   await click('Open saved article');
   await until(() => run("document.body.innerText.includes('First goal')"));
-  async function send(method, params = {}) {
-    const n = ++id,
-      p = new Promise((r) => calls.set(n, r));
-    ws.send(JSON.stringify({ id: n, method, params }));
-    const m = await p;
-    calls.delete(n);
-    if (m.error) throw Error(JSON.stringify(m.error));
-    return m.result;
-  }
   const before = ws.onmessage;
   let hits = 0;
   ws.onmessage = (e) => {

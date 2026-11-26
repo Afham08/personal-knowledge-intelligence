@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useState } from 'react';
 
 import type { ExtractedArticle } from '../../lib/article';
@@ -27,6 +28,7 @@ export function SaveArticle({ article, space, spaces, onSelect, onOpenSaved }: {
         const { added, articleId } = await saveArticle(space.id, article, note);
         setSavedId(articleId);
         if (added) draft.saved(note);
+        if(added)tutorialAction('save');
         return added ? 'Article saved to ' + space.name + '.'
           : 'This article is already in ' + space.name + '. You can edit its note in the library.';
       });

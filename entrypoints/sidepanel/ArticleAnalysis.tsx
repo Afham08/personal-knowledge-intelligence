@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
@@ -70,7 +71,7 @@ export function ArticleAnalysis({ article, goal, modelName, spaceId, enabled, on
         },
       });
       if (request.current === controller) {
-        setState({ status: 'ready', result });
+        setState({ status: 'ready', result });tutorialAction('analysis');
         if ('saveFailed' in result && result.saveFailed) setStorageError('Analysis is available in this panel, but could not be saved for offline review.');
         void changeKnowledge(data=>{
           for(const q of result.analysis.recall){
@@ -103,7 +104,7 @@ export function ArticleAnalysis({ article, goal, modelName, spaceId, enabled, on
 
   if (!enabled && !reviews.length && !storageError) return null;
   return (
-    <section className="card analysis-card" aria-label="AI article analysis">
+    <section className="card analysis-card" aria-label="AI article analysis" data-tour="analysis">
       <h2>Article analysis</h2>
       {reviews.length > 0 && <div className="analysis-block">
         <label>Saved analyses<select value={reviewIndex} onChange={e => setReviewIndex(Number(e.target.value))}>

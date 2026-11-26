@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useRef, useState } from 'react';
 import type { Library } from '../../lib/library-model';
 import { saveArticle, updateLibrary } from '../../lib/library';
@@ -19,8 +20,8 @@ export function PageTools({ library, space, open }: Props) {
     [concepts, setConcepts] = useState<string[]>([]);
   const name = library.spaces.find((s) => s.id === space)?.name;
   return (
-    <details className="card">
-      <summary>Highlights and related knowledge</summary>
+    <details data-tour="page-tools" className="card">
+      <summary>Highlights and related knowledge</summary><p>Keep a passage with your note, or find earlier reading related to this page.</p>
       <p>Selected space: {name ?? 'Choose a space first'}. Page access lasts for the current tab grant.</p>
       <label>
         Highlight color
@@ -39,14 +40,14 @@ export function PageTools({ library, space, open }: Props) {
         onClick={() =>
           void action.run(async () => {
             await annotateCurrent(space, color, note, true);
-            setNote('');
+            tutorialAction('highlight');setNote('');
             return 'Saved. ' + (await annotateCurrent(space, color, '', false));
           })
         }
       >
         Save selected text
       </button>
-      <button disabled={busy} onClick={() => void action.run(() => annotateCurrent(space, color, '', false))}>
+      <button disabled={busy} onClick={() => void action.run(async()=>{const result=await annotateCurrent(space,color,'',false);if(parseInt(result)>0)tutorialAction('restore');return result;})}>
         Restore highlights on this page
       </button>
       <button
@@ -68,7 +69,7 @@ export function PageTools({ library, space, open }: Props) {
                 (await readKnowledge()).cards.filter((c) => urls.has(c.url)).flatMap((c) => c.concepts),
               ),
             ]);
-            return result.mode + ' · ' + result.hits.length + ' related passages.';
+            tutorialAction('related');return result.mode + ' · ' + result.hits.length + ' related passages.';
           })
         }
       >
@@ -97,7 +98,7 @@ export function ImportPdf({ space, library, open }: Props) {
   const request = useRef<AbortController>(undefined);
   useEffect(() => () => request.current?.abort(), []);
   return (
-    <details className="card">
+    <details className="card" data-tour="pdf">
       <summary>Import local PDF</summary>
       <p>
         Save selectable text in {library.spaces.find((s) => s.id === space)?.name ?? 'a Knowledge Space'}. The
@@ -122,7 +123,7 @@ export function ImportPdf({ space, library, open }: Props) {
                 controller.signal.throwIfAborted();
                 const result = await saveArticle(space, a, '');
                 open(result.articleId);
-                return 'Document saved.';
+                tutorialAction('pdf');return 'Document saved.';
               } finally {
                 request.current = undefined;
               }

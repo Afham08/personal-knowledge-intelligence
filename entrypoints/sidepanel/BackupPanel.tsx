@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { knowledgeKey } from '../../lib/revision';
 import { useState } from 'react';
 import { browser } from 'wxt/browser';
@@ -18,7 +19,7 @@ export function BackupPanel() {
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
     const a = document.createElement('a'); a.href = url; a.download = 'PKI-backup-' + new Date().toISOString().slice(0,10) + '.json';
     a.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-    return 'Backup prepared for download.';
+    tutorialAction('backup');return 'Backup prepared for download.';
   }
   async function restore(file: File) {
     if (file.size > BACKUP_LIMIT) throw new Error('Backup exceeds the 12 MiB import limit.');
@@ -31,7 +32,7 @@ export function BackupPanel() {
         return result.added + ' records restored. ' + result.kept + ' existing or over-limit records skipped.';
       }))));
   }
-  return <section className="card"><h2>Backup and restore</h2>
+  return <section className="card" data-tour="backup"><h2>Backup and restore</h2>
     <p>Export spaces, articles, notes, drafts, feedback, revision history, space chats and cached analyses as a readable JSON file. Keep it somewhere private.</p>
     <button type="button" disabled={busy} onClick={() => void perform(download)}>Export backup</button>
     <label>Restore from a PKI backup<input type="file" accept=".json,application/json" disabled={busy} onChange={e => {

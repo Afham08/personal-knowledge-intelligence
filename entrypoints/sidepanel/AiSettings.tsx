@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 
@@ -45,7 +46,7 @@ export function useAiSettings(): SettingsState {
 
 export function AiSettingsPanel({ state }: { state: SettingsState }) {
   return (
-    <section className="card" aria-labelledby="ai-settings">
+    <section className="card" aria-labelledby="ai-settings" data-tour="ai">
       <div className="card-heading"><span className="row-icon"><Icon name="settings" /></span><h2 id="ai-settings">Local AI</h2></div>
       {state.status === 'loading' && <p role="status">Loading AI settings…</p>}
       {state.status === 'error' && <p role="alert">AI settings couldn’t load. Reopen PKI to try again.</p>}
@@ -96,7 +97,7 @@ function OllamaSettings({ settings }: { settings: AiSettings }) {
     setSaving(true);
     setSettingsError('');
     try {
-      await updateAiSettings({ modelName });
+      await updateAiSettings({ modelName });if(modelName)tutorialAction('ai');
     } catch {
       setSettingsError('Could not save the selected model. Try again.');
     } finally {

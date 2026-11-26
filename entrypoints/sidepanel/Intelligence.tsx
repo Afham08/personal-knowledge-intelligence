@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import type { Library } from '../../lib/library-model';
@@ -171,11 +172,11 @@ export function SpaceChat({
         sources: hits.map(({ id, text }) => ({ id, text })),
       });
     });
-    return mode + ' retrieval · ' + hits.length + ' excerpts considered.';
+    if(!overview) tutorialAction('chat');return mode + ' retrieval · ' + hits.length + ' excerpts considered.';
   }
   return (
-    <section className="card">
-      <h2>Study this space</h2>
+    <section className="card" data-tour="chat">
+      <h2>Study this space</h2><p>Ask about the resources saved in this space. Open a cited passage to check the answer.</p>
       <label>
         Ask about your articles
         <textarea maxLength={600} value={question} onChange={(e) => setQuestion(e.target.value)} />
@@ -269,14 +270,14 @@ export function PassageSearch({
   const task = useTask();
   const chunks = useMemo(() => chunksFor(library, space || undefined), [library, space]);
   return (
-    <details className="card">
-      <summary>Search saved passages</summary>
+    <details className="card" data-tour="search">
+      <summary>Search saved passages</summary><p>Search words offline, or match meaning with a local embedding index.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void task.run(async (signal) => {
             const r = await search(chunks, query, signal);
-            setResults(r.hits);
+            setResults(r.hits);tutorialAction('search');
             return r.mode + ' search · ' + r.hits.length + ' passages.';
           });
         }}
@@ -382,11 +383,11 @@ export function DailyReview({ space }: { space?: string }) {
         setRevealed(false);
       }
       setAdjust('');
-      return 'Review saved.';
+      if(!replaces)tutorialAction('review');return 'Review saved.';
     });
   }
   return (
-    <section className="card">
+    <section className="card" data-tour="review">
       <h2>{space ? 'Space revision' : 'Daily review'}</h2>
       <p>
         {due.length} due · {next.length} upcoming

@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useState } from 'react';
 
 import { createSpace, updateLearningGoal } from '../../lib/library';
@@ -26,7 +27,7 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
 
   return (
     <>
-      <section className="card" aria-labelledby="create-space-heading">
+      <section className="card" data-tour="space" aria-labelledby="create-space-heading">
         <div className="section-heading">
           <h2 id="create-space-heading">New Knowledge Space</h2>
           {spaces.length > 0 && (
@@ -45,7 +46,7 @@ export function KnowledgeSpaces({ spaces, selected, links, onSelect, onViewArtic
               setGoal('');
               setCreating(false);
               onSelect(id);
-              return 'Knowledge Space created.';
+              tutorialAction('space');return 'Knowledge Space created.';
             });
           }}>
             {spaces.length === 0 && <p className="empty-copy">Create your first space to save an article and set a goal for analysis.</p>}

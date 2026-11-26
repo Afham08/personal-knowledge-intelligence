@@ -35,7 +35,7 @@ export function CurrentArticle(props: CurrentArticleProps) {
   }
 
   return (
-    <section className="card capture-card" aria-labelledby="current-tab">
+    <section className="card capture-card" data-tour="save" aria-labelledby="current-tab">
       <div className="card-heading"><span className="row-icon"><Icon name="page" /></span>
         <h2 id="current-tab">Current page</h2></div>
       {state.status === 'loading' && <p role="status">Checking the active tab…</p>}
@@ -61,7 +61,7 @@ function ArticleExtraction({ tab, space, spaces, onSelect, libraryReady, ai, onS
 
   return (
     <>
-      <section className="card capture-card" aria-labelledby="current-tab">
+      <section className="card capture-card" data-tour="save" aria-labelledby="current-tab">
         <div className="card-heading"><span className="row-icon"><Icon name="page" /></span>
           <h2 id="current-tab">Current page</h2></div>
         <h3 className="capture-title">{state.status === 'ready' ? state.article.title : tab.title || 'Untitled page'}</h3>

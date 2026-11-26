@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { AiSettingsPanel, useAiSettings } from './AiSettings';
-import { GuideInSettings, WelcomeGuide } from './QuickStart';
+import { GuideInSettings, WelcomeGuide, TutorialPanel, useEducation } from './QuickStart';
+import {DemoSpace} from './DemoSpace';
 import { BackupPanel } from './BackupPanel';
 import { CurrentArticle } from './CurrentArticle';
 import {Management,Appearance} from './Management';
@@ -64,6 +65,14 @@ export default function App() {
     target?.focus({ preventScroll: true });
   }, [route]);
 
+  const edu=useEducation((view,needsReader)=>{
+    if(view==='library'){
+      if(needsReader && reader){navigate(reader,true);return;}
+      setReader(undefined);
+    }
+    navigate({view},true);
+  });
+
   function openSetup(view: 'spaces' | 'settings') {
     setReturnTo(route);
     navigate({ view }, true);
@@ -108,6 +117,7 @@ export default function App() {
           element: new WeakRef(event.target), articleId: event.target.dataset.articleId,
         });
       }} className="app-main" id="main">
+        <TutorialPanel edu={edu}/>
         {state.status === 'loading' && <p role="status">Loading your local library…</p>}
         {state.status === 'error' && <p role="alert">Your library couldn’t load. Close and reopen PKI to try again.</p>}
         <div data-view="home" hidden={route.view !== 'home'} className="page">
@@ -115,16 +125,14 @@ export default function App() {
             <h1 data-page-heading tabIndex={-1}>Your reading desk</h1>
             <p>Capture an article, save it to a space, or study it with local AI.</p>
           </div>
+          <WelcomeGuide edu={edu}/>
           <CurrentArticle space={selected} spaces={library?.spaces ?? []} onSelect={setSpaceId} libraryReady={Boolean(library)}
             ai={ai.status === 'ready' ? ai.settings : undefined}
             onOpenSaved={(id) => openArticle(id, 'home', selected?.id)} onSpaces={() => openSetup('spaces')} onSettings={() => openSetup('settings')} />
 
           {library && <PageTools library={library} space={selected?.id??''} open={id=>openArticle(id,'home')}/>}
           {library && <DailyReview />}
-          <WelcomeGuide onDismiss={() => {
-            const home = main.current?.querySelector<HTMLElement>('[data-view="home"]:not([hidden])');
-            home?.querySelector<HTMLElement>('[data-page-heading]')?.focus();
-          }} />
+
 
           {library && <>
             <section className="card" aria-labelledby="recent-heading">
@@ -149,6 +157,7 @@ export default function App() {
                   {library.spaces.length ? 'Manage spaces' : 'Create a space'} <Icon name="arrow" />
                 </button>
               </div>
+              {edu.data.demo&&<button onClick={edu.loadDemo}>Open Python fundamentals demo</button>}
               {library.spaces.length ? <ul className="row-list">{library.spaces.slice(0, 3).map((space) => (
                 <li key={space.id}>
                   <button className="list-row" type="button" onClick={() => {
@@ -169,6 +178,7 @@ export default function App() {
         <div data-view="spaces" hidden={route.view !== 'spaces'} className="page">
           <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Knowledge Spaces</h1>
             <p>Organize reading around the things you want to learn.</p></div>
+          {edu.data.demo && route.view==='spaces' && <DemoSpace remove={edu.removeDemo}/>}
           {library && <KnowledgeSpaces spaces={library.spaces} selected={selected} onSelect={setSpaceId}
             onViewArticles={showSpaceArticles} links={library.links} />}
           {route.view==='spaces' && library && <Graph library={library} open={id=>openArticle(id,'library')}/>}
@@ -192,7 +202,7 @@ export default function App() {
           <div className="page-heading">{returnButton}<h1 data-page-heading tabIndex={-1}>Settings</h1>
             <p>Manage local AI and see what PKI stores.</p></div>
           <Appearance/>
-          <GuideInSettings />
+          <GuideInSettings edu={edu}/>
           <AiSettingsPanel state={ai} />
           {route.view==='settings' && <IndexSettings/>}
           <BackupPanel />

@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useId, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
@@ -97,7 +98,7 @@ export function RecallPractice({ context, concepts, canCheck, questions, sourceB
       });
       if (request.current === controller) {
         update({ check: { status: 'ready', result, answer } });
-        await saveStudy({ ...practice, kind: 'assessment', id: crypto.randomUUID(), at: Date.now(), answer,
+        tutorialAction('recall');await saveStudy({ ...practice, kind: 'assessment', id: crypto.randomUUID(), at: Date.now(), answer,
           feedback: result, concepts: concepts.filter(c => c.evidence === question.evidence).map(c => c.term) })
           .catch(() => setSaveError('Feedback is available here, but its history could not be saved.'));
       }
@@ -117,7 +118,7 @@ export function RecallPractice({ context, concepts, canCheck, questions, sourceB
 
   const checking = draft.check.status === 'checking';
   return (
-    <section className="practice-card" aria-labelledby={heading}>
+    <section className="practice-card" data-tour="recall" aria-labelledby={heading}>
       <div className="section-heading"><h3 id={heading} tabIndex={-1}>Active recall</h3>
         <p className="metadata" aria-live="polite">Question {index + 1} of {questions.length}</p></div>
       <progress value={index + 1} max={questions.length} aria-label="Recall progress" />
@@ -148,7 +149,7 @@ export function RecallPractice({ context, concepts, canCheck, questions, sourceB
       {draft.check.status === 'error' && <p role="alert">{draft.check.message}</p>}
       {feedback && <Feedback result={feedback} />}
       <div><button className="text-button" type="button" aria-expanded={draft.revealed}
-        onClick={() => update({ revealed: !draft.revealed })}>
+        onClick={() => {if(!draft.revealed&&answer.trim())tutorialAction('recall');update({ revealed: !draft.revealed });}}>
         {draft.revealed ? 'Hide expected answer' : 'Reveal expected answer'}
       </button></div>
       {draft.revealed && <><p><strong>Expected answer</strong> {question.answer}</p><SourceReference passage={passage} /></>}

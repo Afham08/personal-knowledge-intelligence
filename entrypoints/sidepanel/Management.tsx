@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { zipSync, strToU8 } from 'fflate';
@@ -83,7 +84,7 @@ export function Management({ library }: { library: Library }) {
     link.download = resource ? 'PKI-' + resource + '.md' : 'PKI-Markdown.zip';
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    return 'Export prepared.';
+    tutorialAction('backup');return 'Export prepared.';
   }
   return (
     <details className="card">

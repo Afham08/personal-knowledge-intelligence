@@ -1,3 +1,4 @@
+import {tutorialAction} from '../../lib/tutorial';
 import { useMemo, useState } from 'react';
 import type { Library } from '../../lib/library-model';
 import { knowledgeGraph } from '../../lib/graph';
@@ -35,7 +36,7 @@ export function Graph({ library, open }: { library: Library; open: (id: string) 
     ]),
   );
   return (
-    <details className="card">
+    <details className="card" data-tour="graph">
       <summary>Knowledge graph</summary>
       <label>
         Graph space
@@ -102,7 +103,7 @@ export function Graph({ library, open }: { library: Library; open: (id: string) 
                 key={n.id}
                 transform={'translate(' + p.x + ' ' + p.y + ')'}
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => select(n.id)}
+                onClick={() => {select(n.id);tutorialAction('graph');}}
               >
                 <title>{n.kind + ' · ' + n.label}</title>
                 <circle r="8" fill="var(--accent)" />
@@ -131,7 +132,7 @@ export function Graph({ library, open }: { library: Library; open: (id: string) 
       </p>
       <label>
         Browse all matching nodes
-        <select value={selected} onChange={(e) => select(e.target.value)}>
+        <select value={selected} onChange={(e) => {select(e.target.value);if(e.target.value)tutorialAction('graph');}}>
           <option value="">Choose a node</option>
           {matches.map((n) => (
             <option key={n.id} value={n.id}>
@@ -150,7 +151,7 @@ export function Graph({ library, open }: { library: Library; open: (id: string) 
             return (
               n && (
                 <p key={n.id}>
-                  <button onClick={() => select(n.id)}>
+                  <button onClick={() => {select(n.id);tutorialAction('graph');}}>
                     {e.label} · {n.label}
                   </button>
                 </p>

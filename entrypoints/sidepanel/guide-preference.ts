@@ -1,23 +1,23 @@
 import type { browser } from 'wxt/browser';
 
-const preference = 'pki.quickStart.dismissed';
+export const guidePreference = 'pki.quickStart.dismissed';
 type Storage = Pick<typeof browser.storage, 'local' | 'onChanged'>;
 
 export function dismissGuide(storage: Storage) {
-  return storage.local.set({ [preference]: true });
+  return storage.local.set({ [guidePreference]: true });
 }
 
 export function watchGuide(storage: Storage, show: (visible: boolean) => void) {
   let initialReadCurrent = true;
   const changed: Parameters<typeof storage.onChanged.addListener>[0] = (changes, area) => {
-    if (area === 'local' && preference in changes) {
+    if (area === 'local' && guidePreference in changes) {
       initialReadCurrent = false;
-      show(changes[preference].newValue !== true);
+      show(changes[guidePreference].newValue !== true);
     }
   };
   storage.onChanged.addListener(changed);
-  void storage.local.get(preference).then((data) => {
-    if (initialReadCurrent) show(data[preference] !== true);
+  void storage.local.get(guidePreference).then((data) => {
+    if (initialReadCurrent) show(data[guidePreference] !== true);
   }).catch(() => { if (initialReadCurrent) show(true); });
 
   return () => {

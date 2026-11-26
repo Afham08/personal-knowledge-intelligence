@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.3.0-beta.2 — guided introduction
+
+- Home offers a two-step guided start, a separate offline Python demo, or independent exploration. Six short modules cover 14 real actions, with contextual navigation, examples, automatic completion signals and locally remembered progress.
+- Settings now includes Help and tutorials, workflow examples for students, developers and researchers, local AI and permission troubleshooting, and controls to resume or restart onboarding.
+- The opt-in demo includes three original readings, annotations, connected concepts, source-linked sample explanations and illustrative revision feedback. Demo exploration leaves personal study statistics untouched. Removal requires confirmation.
+- Reload the existing unpacked extension in place to retain your library and previous onboarding dismissal. Chromium manifest version 0.3.0.2.
+
 ## 0.3.0-beta.1 — final portfolio beta
 
 - Added native selection highlighting, context-based restoration, editable annotations and explicit related-resource discovery using temporary page access.

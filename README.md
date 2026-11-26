@@ -2,6 +2,18 @@
 
 PKI is an experimental Chrome and Brave side-panel extension for collecting reading material, connecting sources and practicing recall. Its starting question was practical: after saving several articles about the same subject, could a reader find the relevant passage again, explain it in their own words, and revisit it later? This project explores how far browser-native capture, local storage, retrieval and optional on-device AI can take that workflow.
 
+## First five minutes
+
+On first launch, choose **Start guided tutorial** to create a Knowledge Space and save one public article, **Explore demo Knowledge Space** to try PKI offline, or **Explore on my own** to dismiss the welcome. A space is a collection organized around one learning goal.
+
+![First-run welcome in a 320px Brave panel with three ways to start](docs/tutorial-welcome.png)
+
+1. For a hands-on introduction, choose **Start guided tutorial → Show me where**. Name a space and create it. Open a public article, click the extension toolbar icon, then capture and save it in Home. The guide advances when the action succeeds.
+2. For an offline introduction, open **Python fundamentals · Demo** in Spaces. Search three short readings on lists, loops and conditions. Inspect a sample annotation, follow a connected concept and compare a practice answer with the written example. All sample analyses and feedback are illustrative. Only the preference to show the demo persists. The demo creates no personal library, AI or revision records.
+3. Open **Settings → Help and tutorials** to resume, restart, choose an optional module or remove the demo. **Practical example** explains a step in context. **I did this**, **Skip step**, **Back a step** and **Pause tutorial** give you control when the required page, file or local model is unavailable.
+
+**Choose a workflow.** A student can import lecture PDFs, search by page, then use optional AI to generate revision questions. A developer can highlight documentation and find a saved passage while reading another article. A researcher can compare source passages, inspect relationships and export linked Markdown. Capture, import, notes, keyword search, the demo, backups and previously saved practice work without Ollama. Generating fresh analyses, chat responses and answer checks requires local AI.
+
 ## What you can do
 
 | Destination | Implemented workflow |
@@ -49,7 +61,7 @@ The screenshot uses synthetic study material in a real Brave profile. Solid line
 
 ## Install the beta in Chrome or Brave
 
-1. Extract `pki-0.3.0-beta.1-chrome-mv3.zip` into a dedicated folder. Open the folder and check that `manifest.json` is directly inside it.
+1. Extract `pki-0.3.0-beta.2-chrome-mv3.zip` into a dedicated folder. Open the folder and check that `manifest.json` is directly inside it.
 2. Open `chrome://extensions` or `brave://extensions`, enable **Developer mode**, select **Load unpacked**, and choose that folder. Use a Chromium browser version 116 or newer with side-panel support.
 3. Pin **Personal Knowledge Intelligence** in the Extensions menu. On an ordinary article page, click the toolbar icon to open the panel and grant temporary access to that tab.
 
@@ -122,7 +134,7 @@ A reference opens a real supplied passage. Whether it supports a particular inte
 
 ## Project status and lessons
 
-Version 0.3.0-beta.1 concludes planned feature development as an unpacked portfolio beta. Browser tests exercise the extension UI, including capture, recall, offline reopening, revision, multi-source chat, incremental indexing, backup restore, native highlights, PDF extraction, graph rendering and Markdown export. Those browser tests use fixture model responses. Live generation and assessment were exercised separately on qwen3:4b and qwen2.5:1.5b. The smaller model can abstain on a question that the larger model answers using both sources. Local semantic indexing requires an installed embedding model; the final verification machine had only generation models.
+Version 0.3.0-beta.2 concludes planned feature development as an unpacked portfolio beta. Browser tests exercise the extension UI, including capture, recall, offline reopening, revision, multi-source chat, incremental indexing, backup restore, native highlights, PDF extraction, graph rendering and Markdown export. Those browser tests use fixture model responses. Live generation and assessment were exercised separately on qwen3:4b and qwen2.5:1.5b. The smaller model can abstain on a question that the larger model answers using both sources. Local semantic indexing requires an installed embedding model; the final verification machine had only generation models.
 
 Three lessons emerged from testing: an exact passage reference makes an answer inspectable without proving it correct; a saved quote is more durable than a DOM position on a changing webpage; and separating primary data from derived indexes makes offline use and recovery practical. PDFs with inaccessible text, ambiguous highlight locations and incomplete model answers are explicit product limits. No public store publication or project license has been approved.
 
@@ -137,6 +149,6 @@ npm test
 npm run package
 ```
 
-The build directory is `.output/chrome-mv3`. Packaging validates manifest metadata, assets, required icons and archive contents, then writes `.output/pki-0.3.0-beta.1-chrome-mv3.zip`. If your system names Python `python3`, run `npm run build` followed by `python3 scripts/package.py`. CI runs type checking, the fixture-based test suite and packaging. For the headless integration check, set `PKI_TEST_BROWSER` to a Brave or Chrome for Testing executable and run `npm run test:browser` after building. This uses a disposable profile, a local webpage, fixture AI responses and a test-only local host grant. Live model inference is checked separately.
+The build directory is `.output/chrome-mv3`. Packaging validates manifest metadata, assets, required icons and archive contents, then writes `.output/pki-0.3.0-beta.2-chrome-mv3.zip`. If your system names Python `python3`, run `npm run build` followed by `python3 scripts/package.py`. CI runs type checking, the fixture-based test suite and packaging. For the headless integration check, set `PKI_TEST_BROWSER` to a Brave or Chrome for Testing executable and run `npm run test:browser` after building. This uses a disposable profile, a local webpage, fixture AI responses and a test-only local host grant. Live model inference is checked separately.
 
 See the [privacy policy](PRIVACY.md), [beta release notes](CHANGELOG.md), [contribution guidelines](CONTRIBUTING.md) and [store submission checklist](docs/store-submission.md). The owner has yet to select a license for PKI's original code. Bundled dependency notices are included in the distribution.

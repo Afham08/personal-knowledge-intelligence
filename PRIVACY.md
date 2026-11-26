@@ -15,3 +15,5 @@ Personal Knowledge Intelligence runs in your Chrome or Brave profile. The develo
 **Control and retention.** The profile retains the library and study records across restarts. The analysis cache retains up to 30 results. A backup is an unencrypted JSON file that can contain private reading and study material. Export and import are user actions. Keep exported files private and delete them separately when no longer needed. Removing the extension clears its local storage through the browser. Disable AI in Settings to keep using capture, organization and saved reviews locally.
 
 For questions, use the repository contact channel and describe the issue without posting private articles, backups or learner answers. [Project repository](https://github.com/Afham08/personal-knowledge-intelligence)
+
+**Tutorial and demo.** Tutorial position, completed and skipped steps, and the choice to show the built-in demo are stored in the browser profile. Demo practice answers are held in panel memory. The sample space uses no network service and creates no personal study history.
